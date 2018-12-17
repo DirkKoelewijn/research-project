@@ -1,6 +1,5 @@
-#define KBUILD_MODNAME "dkoelewijn"
+#define KBUILD_MODNAME "RESEARCH_PROJECT"
 
-int xdp_prog1(struct xdp_md *ctx) {
-    bpf_trace_printk("Packet dropped\n");
-    return XDP_DROP;
+int xdp_filter(struct xdp_md *ctx) {
+	return XDP_DROP;
 }
