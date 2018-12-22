@@ -23,10 +23,13 @@ class Module:
         if self.dependency is None:
             return self.code
 
-        # If not, find the indentation of the $CODE element
+        # With a dependency, it's template is the start of the result
+        result = self.dependency.get_code_template()
+
+        # Find the indentation of the $CODE
         indentation = ''
         i_code = -1
-        for i, line in enumerate(self.dependency.get_code_template()):
+        for i, line in enumerate(result):
             if "$CODE" in line:
                 indentation = line[:line.index("$CODE")]
                 i_code = i
@@ -41,7 +44,6 @@ class Module:
             own_code[i] = indentation + line
 
         # Replace the line with $CODE with our code
-        result = self.dependency.code.copy()
         return result[:i_code] + own_code + result[i_code + 1:]
 
     def get_final_template(self):
@@ -70,5 +72,8 @@ Ethernet = Module(
     file_str('code/ethernet.c'),
     Program)
 
-if __name__ == "__main__":
-    print("\n".join(Ethernet.get_final_template()))
+IPv4 = Module(
+    {'linux/ip.h'},
+    file_str('code/ipv4.c'),
+    Ethernet
+)

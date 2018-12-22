@@ -7,9 +7,9 @@ struct ethhdr *eth = data;
 
 // Get ethernet header offset and return if not enough data
 uint16_t eth_proto;
-uint64_t eth_off = sizeof(*eth);
+uint64_t offset = sizeof(*eth);
 
-if (data + eth_off  > data_end)
+if (data + offset  > data_end)
     return $NO_MATCH;
 
 eth_proto = eth->h_proto;

@@ -33,4 +33,6 @@ class Program:
 
 
 if __name__ == "__main__":
-    print(Program(Modules.Ethernet).code("module", "xdp_filter"))
+    print(Program(Modules.IPv4).code("module", "xdp_filter",
+                                     'bpf_trace_printk("\\nip4.dst %u\\nip4.src %u\\nip4.pro %u\\n", '
+                                     'htonl(ip->saddr), htonl(ip->daddr), ip->protocol);'))
