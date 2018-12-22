@@ -34,4 +34,4 @@ class Program:
 
 
 if __name__ == "__main__":
-    print(Program(Modules.UDPv4).code("module", "xdp_filter", file_str('code/custom_code.c')))
+    print(Program(Modules.IPv4).code("module", "xdp_filter", file_str('code/custom_code.c')))

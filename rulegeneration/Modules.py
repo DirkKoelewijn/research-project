@@ -89,3 +89,9 @@ UDPv4 = Module(
     file_str('code/udp4.c'),
     IPv4
 )
+
+TCPv4 = Module(
+    {'linux/tcp.h'},
+    file_str('code/tcp4.c'),
+    IPv4
+)

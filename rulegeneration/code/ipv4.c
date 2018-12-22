@@ -2,10 +2,12 @@
 if (eth_proto == htons(ETH_P_IP)){
     struct iphdr *ip = data + offset;
 
-    // Increase offset and check if complete
-    offset = offset + sizeof(*ip);
-    if (data + offset > data_end)
-        return $NO_MATCH;
+     // Check if sufficient data
+    if (data + offset + sizeof(*ip) > data_end)
+        return XDP_PASS;
+
+    // Increase offset according to header itself
+    offset = offset + (ip->ihl*4);
 
     $CODE
 }
