@@ -1,6 +1,7 @@
-class Dependency:
+# TODO DOCUMENT
+class Module:
 
-    def __init__(self, includes: {str} = None, code: str = '', dependency: 'Dependency' = None):
+    def __init__(self, includes: {str} = None, code: str = '', dependency: 'Module' = None):
         # Set dependency
         self.dependency = dependency
 
@@ -58,6 +59,6 @@ class Dependency:
 
 if __name__ == "__main__":
     c = "$INCLUDE\ntest;\n\t    $CODE;\nint x = 3;"
-    x = Dependency({'linux/ether.h'}, c)
-    y = Dependency({'linux/something.h'}, "hello!\n\tCheck this cool indentation!", x)
+    x = Module({'linux/ether.h'}, c)
+    y = Module({'linux/something.h'}, "hello!\n\tCheck this cool indentation!", x)
     print("\n".join(y.get_final_template()))
