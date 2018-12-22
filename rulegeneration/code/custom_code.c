@@ -1,0 +1,1 @@
+bpf_trace_printk("\nudp.src %u\nudp.dst %u\nudp.len %u\n", htons(udp->source), htons(udp->dest), htons(udp->len));

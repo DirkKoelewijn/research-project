@@ -1,4 +1,5 @@
 import Modules
+from util import file_str
 
 
 class Program:
@@ -33,4 +34,4 @@ class Program:
 
 
 if __name__ == "__main__":
-    print(Program(Modules.Ethernet, False).code("module", "xdp_filter"))
+    print(Program(Modules.UDPv4).code("module", "xdp_filter", file_str('code/custom_code.c')))

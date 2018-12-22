@@ -83,3 +83,9 @@ IPv6 = Module(
     file_str('code/ipv6.c'),
     Ethernet
 )
+
+UDPv4 = Module(
+    {'linux/udp.h'},
+    file_str('code/udp4.c'),
+    IPv4
+)

@@ -1,5 +1,7 @@
 #define KBUILD_MODNAME "module"
+#include <linux/udp.h>
 #include <linux/if_ether.h>
+#include <linux/ip.h>
 
 int xdp_filter(struct xdp_md *ctx) {
     // Load pointers to data and end of data
@@ -14,10 +16,30 @@ int xdp_filter(struct xdp_md *ctx) {
     uint64_t offset = sizeof(*eth);
 
     if (data + offset  > data_end)
-        return XDP_DROP;
+        return XDP_PASS;
 
     eth_proto = eth->h_proto;
 
+    // Check if next protocol matches IPv4
+    if (eth_proto == htons(ETH_P_IP)){
+        struct iphdr *ip = data + offset;
 
-    return XDP_DROP;
+        // Increase offset and check if complete
+        offset = offset + sizeof(*ip);
+        if (data + offset > data_end)
+            return XDP_PASS;
+
+        // Check if next protocol matches UDP
+        if (ip->protocol == 17){
+            struct udphdr *udp = data + offset;
+
+            // Increase offset and check if complete
+            offset = offset + sizeof(*udp);
+            if (data + offset > data_end)
+                return XDP_PASS;
+
+            bpf_trace_printk("\nudp.src %u\nudp.dst %u\nudp.len %u\n", htons(udp->source), htons(udp->dest), htons(udp->len));
+        }
+    }
+    return XDP_PASS;
 }
