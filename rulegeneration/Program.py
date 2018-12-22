@@ -8,9 +8,9 @@ class Program:
     POS = "$MATCH"
     NEG = "$NO_MATCH"
 
-    def __init__(self, module: 'Modules.Module'):
+    def __init__(self, module: 'Modules.Module', black_list=True):
         self.__module = module
-        self.__blacklist = True
+        self.__blacklist = black_list
 
     def is_blacklist(self):
         return self.__blacklist
@@ -33,6 +33,4 @@ class Program:
 
 
 if __name__ == "__main__":
-    print(Program(Modules.IPv4).code("module", "xdp_filter",
-                                     'bpf_trace_printk("\\nip4.dst %u\\nip4.src %u\\nip4.pro %u\\n", '
-                                     'htonl(ip->saddr), htonl(ip->daddr), ip->protocol);'))
+    print(Program(Modules.Ethernet, False).code("module", "xdp_filter"))

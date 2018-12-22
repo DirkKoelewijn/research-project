@@ -77,3 +77,9 @@ IPv4 = Module(
     file_str('code/ipv4.c'),
     Ethernet
 )
+
+IPv6 = Module(
+    {'linux/ipv6.h'},
+    file_str('code/ipv6.c'),
+    Ethernet
+)
