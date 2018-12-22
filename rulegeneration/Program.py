@@ -1,17 +1,15 @@
-from rulegeneration import util
+import Modules
 
 
 class Program:
     MOD = "$MODULE_NAME"
     PROG = "$PROG_NAME"
-    INCL = "$INCLUDES"
-    FUNC = "$FUNCTIONS"
     CODE = "$CODE"
     POS = "$MATCH"
     NEG = "$NO_MATCH"
 
-    def __init__(self):
-        self.__program_skeleton = util.file_str('code/default.c')
+    def __init__(self, module: 'Modules.Module'):
+        self.__module = module
         self.__blacklist = True
 
     def is_blacklist(self):
@@ -20,15 +18,10 @@ class Program:
     def set_blacklist(self, blacklist: bool):
         self.__blacklist = blacklist
 
-    def code(self, mod_name: str, pro_name: str) -> str:
-        includes = ""
-        functions = ""
-        code = ""
-
-        result = self.__program_skeleton.replace(Program.MOD, mod_name) \
+    def code(self, mod_name: str, pro_name: str, code: str = "") -> str:
+        result = "\n".join(self.__module.get_final_template()) \
+            .replace(Program.MOD, mod_name) \
             .replace(Program.PROG, pro_name) \
-            .replace(Program.INCL, includes) \
-            .replace(Program.FUNC, functions) \
             .replace(Program.CODE, code)
 
         if self.__blacklist:
@@ -39,4 +32,5 @@ class Program:
         return result
 
 
-print(Program().code("module", "xdp_filter"))
+if __name__ == "__main__":
+    print(Program(Modules.Ethernet).code("module", "xdp_filter"))

@@ -1,3 +1,6 @@
+from util import *
+
+
 # TODO DOCUMENT
 class Module:
 
@@ -57,8 +60,15 @@ class Module:
         raise AssertionError("Template code should contain $INCLUDE")
 
 
+Program = Module(
+    None,
+    file_str('code/default.c'),
+    None)
+
+Ethernet = Module(
+    {'linux/if_ether.h'},
+    file_str('code/ethernet.c'),
+    Program)
+
 if __name__ == "__main__":
-    c = "$INCLUDE\ntest;\n\t    $CODE;\nint x = 3;"
-    x = Module({'linux/ether.h'}, c)
-    y = Module({'linux/something.h'}, "hello!\n\tCheck this cool indentation!", x)
-    print("\n".join(y.get_final_template()))
+    print("\n".join(Ethernet.get_final_template()))
