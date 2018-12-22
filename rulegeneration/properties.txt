@@ -1,7 +1,0 @@
-List of desired properties to use:
-
-Ethernet: NONE
-
-IPv4:
-- Source address (32b, uc[6])
-- Destination address (32b, uc[6])

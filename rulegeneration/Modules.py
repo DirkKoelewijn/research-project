@@ -1,10 +1,28 @@
 from util import *
 
 
-# TODO DOCUMENT
 class Module:
+    """
+    The module class is used to generate preparing code for accessing headers of several internet protocols in a
+    modular way.
+
+    Each module other than the basic program module depends on other, lower OSI layer level modules. For instance,
+    TCP can depend on IPv4 or IPv6. IPv4 and IPv6 depend on Ethernet, which depends on the basic program.
+
+    Each module consists of:
+     * a set of required C libraries
+     * code to load the header into a C struct
+     * a module that it depends on (except for the basic BPF program)
+    """
 
     def __init__(self, includes: {str} = None, code: str = '', dependency: 'Module' = None):
+        """
+        Initializes a Module
+
+        :param includes: Names of C headers to include (e.g: {'linux/if_ether.h'})
+        :param code: The code in one string, including line endings
+        :param dependency: Optional. The highest module that it depends on
+        """
         # Set dependency
         self.dependency = dependency
 
@@ -19,6 +37,11 @@ class Module:
         self.code = code.splitlines()
 
     def get_code_template(self):
+        """
+        Returns the code template of the module (including that of depending modules), without replacing the $INCLUDE.
+
+        :return: Code template of modules
+        """
         # Return plain code if no dependency
         if self.dependency is None:
             return self.code
@@ -47,6 +70,11 @@ class Module:
         return result[:i_code] + own_code + result[i_code + 1:]
 
     def get_final_template(self):
+        """
+        Returns the final code template in which the $INCLUDE is also replaced.
+
+        :return: Final code template
+        """
         template = self.get_code_template()
 
         # Create list
