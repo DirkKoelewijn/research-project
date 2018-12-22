@@ -20,10 +20,24 @@ class Program:
         self.__blacklist = blacklist
 
     def code(self, mod_name: str, pro_name: str, code: str = "") -> str:
-        result = "\n".join(self.__module.get_final_template()) \
+        template = self.__module.get_final_template()
+        code = code.splitlines(False)
+
+        # Fix indentation of inserted code
+        # TODO To utility function?
+        code_index = -1
+        code_indent = ''
+        for i, line in enumerate(template):
+            if "$CODE" in line:
+                code_indent = line[:line.index("$CODE")]
+                code_index = i
+                break
+
+        filled_template = template[:code_index] + [code_indent + c for c in code] + template[code_index + 1:]
+
+        result = "\n".join(filled_template) \
             .replace(Program.MOD, mod_name) \
-            .replace(Program.PROG, pro_name) \
-            .replace(Program.CODE, code)
+            .replace(Program.PROG, pro_name)
 
         if self.__blacklist:
             result = result.replace(Program.POS, "XDP_DROP").replace(Program.NEG, "XDP_PASS")
@@ -34,4 +48,4 @@ class Program:
 
 
 if __name__ == "__main__":
-    print(Program(Modules.IPv4).code("module", "xdp_filter", file_str('code/custom_code.c')))
+    print(Program(Modules.TCPv4).code("module", "xdp_filter", file_str('code/custom_code.c')))

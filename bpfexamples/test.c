@@ -1,6 +1,7 @@
 #define KBUILD_MODNAME "module"
-#include <linux/if_ether.h>
 #include <linux/ip.h>
+#include <linux/tcp.h>
+#include <linux/if_ether.h>
 
 int xdp_filter(struct xdp_md *ctx) {
     // Load pointers to data and end of data
@@ -23,14 +24,29 @@ int xdp_filter(struct xdp_md *ctx) {
     if (eth_proto == htons(ETH_P_IP)){
         struct iphdr *ip = data + offset;
 
-         // Check if sufficient data
+        // Check if sufficient data
         if (data + offset + sizeof(*ip) > data_end)
             return XDP_PASS;
 
         // Increase offset according to header itself
         offset = offset + (ip->ihl*4);
 
+        // Check if next protocol matches TCP
+        if (ip->protocol == 6){
+            struct tcphdr *tcp = data + offset;
 
+           // Check if sufficient data
+            if (data + offset + sizeof(*tcp) > data_end)
+                return XDP_PASS;
+
+            // Increase offset according to header itself
+            offset = offset + (tcp->doff*4);
+
+            if (tcp->ack == 1){
+                bpf_trace_printk("ACK dropped\n");
+                return XDP_DROP;
+            }
+        }
     }
     return XDP_PASS;
 }

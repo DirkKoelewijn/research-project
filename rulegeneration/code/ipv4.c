@@ -2,7 +2,7 @@
 if (eth_proto == htons(ETH_P_IP)){
     struct iphdr *ip = data + offset;
 
-     // Check if sufficient data
+    // Check if sufficient data
     if (data + offset + sizeof(*ip) > data_end)
         return XDP_PASS;
 

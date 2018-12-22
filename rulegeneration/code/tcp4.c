@@ -2,10 +2,12 @@
 if (ip->protocol == 6){
     struct tcphdr *tcp = data + offset;
 
-    // Increase offset and check if complete
-    offset = offset + sizeof(*tcp);
-    if (data + offset > data_end)
-        return $NO_MATCH;
+   // Check if sufficient data
+    if (data + offset + sizeof(*tcp) > data_end)
+        return XDP_PASS;
+
+    // Increase offset according to header itself
+    offset = offset + (tcp->doff*4);
 
     $CODE
 }
