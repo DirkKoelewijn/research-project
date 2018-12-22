@@ -16,6 +16,6 @@ int $PROG_NAME(struct xdp_md *ctx) {
     if (data + eth_off  > data_end)
         return $NO_MATCH;
 
-$CODE
+    $CODE
     return $NO_MATCH;
 }
