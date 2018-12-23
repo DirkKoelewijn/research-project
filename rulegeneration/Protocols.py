@@ -1,3 +1,5 @@
+import re
+
 from util import file_str
 
 PROTOCOL_TEMPLATE = file_str('templates/protocol.c')
@@ -15,13 +17,16 @@ class Protocol:
         if size is None:
             size = "sizeof(*%s)" % struct_name
         self.__size = size
-        self.__next_code = next_proto_code
+        self.next_code = next_proto_code
 
         if lower_protocols is None:
             lower_protocols = []
         self.lower_protocols = lower_protocols
         self.protocol_id = protocol_id
         self.__return = _return
+
+    def __str__(self):
+        return '%s (OSI layer %d)' % (self.name, self.osi)
 
     def load_code(self):
         result = PROTOCOL_TEMPLATE \
@@ -33,12 +38,15 @@ class Protocol:
         else:
             result = result.replace("$NO_DATA", "goto $LBL_RULES")
 
-        return result.replace("$SIZE", self.__size) \
-            .replace("$NEXT_OSI", str(self.osi + 1)) \
-            .replace("$PROTOCOL", self.__next_code)
+        result = result.replace("$SIZE", self.__size).replace("$NEXT_OSI", str(self.osi + 1))
+
+        if str(self.next_code) != '-1':
+            return result.replace("$PROTOCOL", self.next_code)
+        return re.sub(r".+\$PROTOCOL.+", '', result, re.MULTILINE)
 
 
-Ethernet = Protocol('Ethernet', 2, ['linux/if_ether.h'], 'ethhdr', 'eth', 'htons(eth->h_proto)', _return=True)
+Ethernet = Protocol('Ethernet', 2, ['linux/if_ether.h'], 'ethhdr', 'eth', next_proto_code='htons(eth->h_proto)',
+                    _return=True)
 
 IPv4 = Protocol('IPv4', 3, ['linux/ip.h'], 'iphdr', 'ip', [Ethernet], 'ETH_P_IP', 'ip->protocol', 'ip->ihl*4')
 
@@ -52,11 +60,9 @@ ICMPv6 = Protocol('ICMPv6', 4, ['linux/icmpv6.h'], 'icmp6hdr', 'icmp6', [IPv6], 
 
 IGMP = Protocol('IGMP', 4, ['linux/igmp.h'], 'igmphdr', 'igmp', [IPv4, IPv6], '2')
 
-TCP = Protocol('ICP', 4, ['linux/tcp.h'], 'tcphdr', 'tcp', [IPv4, IPv6], '6')
+TCP = Protocol('TCP', 4, ['linux/tcp.h'], 'tcphdr', 'tcp', [IPv4, IPv6], '6')
 
 UDP = Protocol('UDP', 4, ['linux/udp.h'], 'udphdr', 'udp', [IPv4, IPv6], '17')
 
 if __name__ == '__main__':
-    print(Ethernet.load_code())
-    print(IPv4.load_code())
-    print(IPv6.load_code())
+    print(Ethernet.next_code)
