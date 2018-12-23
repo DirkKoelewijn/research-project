@@ -30,7 +30,7 @@ int xdp_filter(struct xdp_md *ctx) {
 
     // OSI 2: Data Link layer
     // Ethernet
-    uint16_t proto3;
+    uint16_t proto3 = -1;
     if (data + offset + sizeof(*eth)  > data_end){
         return XDP_PASS;            // Return if ethernet not available
     } else {
@@ -41,7 +41,7 @@ int xdp_filter(struct xdp_md *ctx) {
 
     // OSI 3: Network layer
     // IPv4
-    uint8_t proto4;     // Proto: 6 TCP, 17 UDP, 1 ICMP, 2 IGMP
+    uint8_t proto4 = -1;     // Proto: 6 TCP, 17 UDP, 1 ICMP, 2 IGMP
     if (proto3 == ETH_P_IP){
         // Return for insufficient data
         if (data + offset + sizeof(*ip) > data_end)
@@ -100,7 +100,7 @@ int xdp_filter(struct xdp_md *ctx) {
             goto Rules;
 
         tcp = data + offset;
-        offset += sizeof(*tcp);
+        offset += tcp->doff*4;
     }
     // UDP
     else if (proto4 == 17){
