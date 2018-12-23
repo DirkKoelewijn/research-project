@@ -60,6 +60,14 @@ int xdp_filter(struct xdp_md *ctx) {
         ip6 = data + offset;
         offset += sizeof(*ip6);
     }
+    // ARP
+    else if (proto3 == ETH_P_ARP){
+         if (data + offset + sizeof(*arp) > data_end)
+            goto Rules;
+
+        arp = data + offset;
+        offset += sizeof(*arp);
+    }
 
     // OSI 4: Transport layer
     // ICMP (1, IPv4)
