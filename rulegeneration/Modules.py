@@ -15,7 +15,7 @@ class Module:
      * a module that it depends on (except for the basic BPF program)
     """
 
-    def __init__(self, includes: {str} = None, code: str = '', dependency: 'Module' = None):
+    def __init__(self, reference: str, includes: {str} = None, code: str = '', dependency: 'Module' = None):
         """
         Initializes a Module
 
@@ -23,6 +23,9 @@ class Module:
         :param code: The code in one string, including line endings
         :param dependency: Optional. The highest module that it depends on
         """
+        # Set reference
+        self.reference = reference
+
         # Set dependency
         self.dependency = dependency
 
@@ -91,34 +94,40 @@ class Module:
 
 
 Program = Module(
+    '',
     None,
     file_str('code/default.c'),
     None)
 
 Ethernet = Module(
+    'eth',
     {'linux/if_ether.h'},
     file_str('code/ethernet.c'),
     Program)
 
 IPv4 = Module(
+    'ip',
     {'linux/ip.h'},
     file_str('code/ipv4.c'),
     Ethernet
 )
 
 IPv6 = Module(
+    'ip6',
     {'linux/ipv6.h'},
     file_str('code/ipv6.c'),
     Ethernet
 )
 
 UDPv4 = Module(
+    'udp',
     {'linux/udp.h'},
     file_str('code/udp4.c'),
     IPv4
 )
 
 TCPv4 = Module(
+    'tcp',
     {'linux/tcp.h'},
     file_str('code/tcp4.c'),
     IPv4
