@@ -1,0 +1,1 @@
+if (%s && %s) return $MATCH;

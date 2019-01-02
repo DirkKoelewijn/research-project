@@ -1,6 +1,8 @@
 #define KBUILD_MODNAME "module"
 $INCLUDES
 
+$FUNCTIONS
+
 int xdp_filter(struct xdp_md *ctx) {
     // Load pointers to data and end of data
     void* data_end = (void*)(long)ctx->data_end;
@@ -13,7 +15,7 @@ int xdp_filter(struct xdp_md *ctx) {
     // Structs of headers used in rules
     $STRUCTS
     $CODE
-    $LBL_RULES:
+    Rules:
     $RULES
 
     return $NO_MATCH;

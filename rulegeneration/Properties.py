@@ -11,17 +11,8 @@ class Property(ABC):
         self.proto = proto
         self.name = name
 
-    def var_name(self):
-        return "comp_%s_%s" % (self.proto.struct_name, self.name)
-
     @abstractmethod
     def compare_code(self, comparer, value: str):
-        """
-        Returns an optional initializing variable and the code itself in a tuple
-        :param comparer: Numerical comparator (==, <=, etc.)
-        :param value: Value to compare with
-        :return: (Optional init var, conditional code)
-        """
         raise NotImplementedError
 
     def __str__(self):
@@ -39,15 +30,14 @@ class MacProperty(Property):
 
     def compare_code(self, comparer, value: str):
         chars = [str(int(char, 16)) for char in value.split(':')]
-        var = "unsigned char %s[6] = {%s};" % (self.var_name(), ", ".join(chars))
-        code = "%s(%s, %s) %s 0" % (self.function.name, self, self.var_name(), comparer)
-        return var, code
+        code = "%s(%s, %s) %s 0" % (self.function.name, self, ", ".join(chars), comparer)
+        return code
 
 
 class HtonsProperty(Property):
 
     def compare_code(self, comparer, value: str):
-        return None, "htons(%s) %s %s" % (self, comparer, value)
+        return "htons(%s) %s %s" % (self, comparer, value)
 
 
 class IpProperty(Property):
@@ -57,17 +47,18 @@ class IpProperty(Property):
         for v in reversed(value.split('.')):
             val = val << 8
             val += int(v)
-        return None, "%s %s %s" % (self, comparer, val)
+        return "%s %s %s" % (self, comparer, val)
 
 
 class NumberProperty(Property):
 
     def compare_code(self, comparer, value: str):
-        return None, "%s %s %s" % (self, comparer, value)
+        return "%s %s %s" % (self, comparer, value)
 
 
+# TODO Add support for other protocols
 LENGTH = SimpleProperty(Ethernet, 'length')
-# TODO Move code below to protocols? (like line below)l
+# TODO Move code below to protocols? (like line below)
 Ethernet.Source = MacProperty(Ethernet, 'h_source')
 ETH_SRC = MacProperty(Ethernet, 'h_source')
 ETH_DST = MacProperty(Ethernet, 'h_dest')
@@ -90,4 +81,4 @@ TCP_ECE = NumberProperty(TCP, 'ece')
 TCP_CWR = NumberProperty(TCP, 'cwr')
 
 if __name__ == '__main__':
-    print(TCP_SRC.compare_code('<=', '80'))
+    print(TCP_SRC.function)

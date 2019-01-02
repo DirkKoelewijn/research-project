@@ -1,7 +1,9 @@
-from Protocols import *
+from Rules import *
 from util import file_str, code_insert
 
 PROGRAM_TEMPLATE = file_str('templates/program.c')
+
+RULE_TEMPLATE = file_str('templates/rule.c')
 
 EXAMPLE_PROTOCOLS = {
     2: [Ethernet],
@@ -11,6 +13,47 @@ EXAMPLE_PROTOCOLS = {
 
 
 class Program:
+
+    @staticmethod
+    def generate(rules: [Rule]):
+        # Extract dependencies from rules
+        dependencies = Program.__get_dependencies(rules)
+
+        # Generate code template based on dependencies
+        template = Program.generate_template(dependencies)
+
+        # Get and insert functions
+        functions = Program.__get_functions(rules)
+        func_code = '\n'.join([str(func) for func in functions])
+        template = code_insert(template, '$FUNCTIONS', func_code, True)
+
+        # Generate and insert rule code
+        rule_code = '\n'.join([RULE_TEMPLATE % (rule.initial_condition(), rule.code()) for rule in rules])
+        template = code_insert(template, '$RULES', rule_code, True)
+
+        return template
+
+    @staticmethod
+    def __get_functions(rules: [Rule]):
+        functions = set()
+        for r in rules:
+            functions = functions | r.functions()
+        return list(functions)
+
+    @staticmethod
+    def __get_dependencies(rules: [Rule]):
+        res = {}
+        for deps in [r.dependencies() for r in rules]:
+            for k, v in deps.items():
+                if k not in res:
+                    res[k] = []
+                res[k].extend(v)
+
+        for k, v in res.items():
+            res[k] = list(set(v))
+
+        return res
+
     @staticmethod
     def __get_protocols(deps):
         return [p for l in deps.values() for p in l]
@@ -63,7 +106,7 @@ class Program:
                     layer_code += code_insert(p_if, '$CODE', p.load_code())
 
                 # Finish layer with: if no protocol matched, go to rules directly
-                layer_code += "{\n\tgoto $LBL_RULES;\n}"
+                layer_code += "{\n\tgoto Rules;\n}"
 
             # Insert the code of the layer and go to the next
             result = code_insert(result, '$CODE', layer_code, False)
@@ -73,5 +116,10 @@ class Program:
 
 
 if __name__ == '__main__':
-    code = Program.generate_template(EXAMPLE_PROTOCOLS)
-    print(code)
+    a = Rule(IP_SRC, Comparator.EQ, '140.82.118.4')
+    b = Rule(TCP_SRC, Comparator.GTE, '1024')
+    c = Rule(a, Comparator.AND, b)
+    d = Rule(ETH_DST, Comparator.EQ, 'bc:5f:f4:d3:56:c1')
+    e = Rule(UDP_SRC, Comparator.GTE, '1024')
+    f = Rule(d, Comparator.AND, e)
+    print(Program.generate([c, f]))

@@ -14,6 +14,9 @@ class Function:
     def __str__(self):
         return self.code
 
+    def __repr__(self):
+        return self.name
+
 
 CompareMAC = Function('compare_mac', file='templates/compare_mac.c')
 

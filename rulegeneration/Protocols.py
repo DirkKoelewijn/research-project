@@ -27,7 +27,10 @@ class Protocol:
         self.__return = _return
 
     def __str__(self):
-        return '%s (OSI layer %d)' % (self.name, self.osi)
+        return self.name
+
+    def __repr__(self):
+        return self.__str__()
 
     def load_code(self):
         result = PROTOCOL_TEMPLATE \
@@ -37,13 +40,19 @@ class Protocol:
         if self.__return:
             result = result.replace("$NO_DATA", "return $NO_MATCH")
         else:
-            result = result.replace("$NO_DATA", "goto $LBL_RULES")
+            result = result.replace("$NO_DATA", "goto Rules")
 
         result = result.replace("$SIZE", self.__size).replace("$NEXT_OSI", str(self.osi + 1))
 
         if str(self.next_code) != '-1':
             return result.replace("$PROTOCOL", self.next_code)
         return re.sub(r".+\$PROTOCOL.+", '', result, re.MULTILINE)
+
+    def get_lower_protocols(self):
+        res = set(self.lower_protocols)
+        for p in res:
+            res = res | p.get_lower_protocols()
+        return res
 
 
 # Protocol definitions
