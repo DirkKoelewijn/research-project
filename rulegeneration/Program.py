@@ -15,23 +15,28 @@ EXAMPLE_PROTOCOLS = {
 class Program:
 
     @staticmethod
-    def generate(rules: [Rule]):
+    def generate(rules: [Rule], blacklist=True):
         # Extract dependencies from rules
         dependencies = Program.__get_dependencies(rules)
 
         # Generate code template based on dependencies
-        template = Program.generate_template(dependencies)
+        result = Program.generate_template(dependencies)
 
         # Get and insert functions
         functions = Program.__get_functions(rules)
         func_code = '\n'.join([str(func) for func in functions])
-        template = code_insert(template, '$FUNCTIONS', func_code, True)
+        result = code_insert(result, '$FUNCTIONS', func_code, True)
 
         # Generate and insert rule code
         rule_code = '\n'.join([RULE_TEMPLATE % (rule.initial_condition(), rule.code()) for rule in rules])
-        template = code_insert(template, '$RULES', rule_code, True)
+        result = code_insert(result, '$RULES', rule_code, True)
 
-        return template
+        if blacklist:
+            result = result.replace('$NO_MATCH', 'XDP_PASS').replace('$MATCH', 'XDP_DROP')
+        else:
+            result = result.replace('$MATCH', 'XDP_PASS').replace('$NO_MATCH', 'XDP_DROP')
+
+        return result
 
     @staticmethod
     def __get_functions(rules: [Rule]):
@@ -116,10 +121,5 @@ class Program:
 
 
 if __name__ == '__main__':
-    a = Rule(IP_SRC, Comparator.EQ, '140.82.118.4')
-    b = Rule(TCP_SRC, Comparator.GTE, '1024')
-    c = Rule(a, Comparator.AND, b)
-    d = Rule(ETH_DST, Comparator.EQ, 'bc:5f:f4:d3:56:c1')
-    e = Rule(UDP_SRC, Comparator.GTE, '1024')
-    f = Rule(d, Comparator.AND, e)
-    print(Program.generate([c, f]))
+    nu_nl = Rule(Rule(IP_SRC, Comparator.EQ, '52.6.10.88'), Comparator.OR, Rule(IP_SRC, Comparator.EQ, '23.62.98.18'))
+    print(Program.generate([nu_nl]))
