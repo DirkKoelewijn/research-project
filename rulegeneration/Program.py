@@ -5,8 +5,8 @@ PROGRAM_TEMPLATE = file_str('templates/program.c')
 
 EXAMPLE_PROTOCOLS = {
     2: [Ethernet],
-    3: [IPv4, IPv6, ARP],
-    4: [TCP, UDP, ICMP, ICMPv6, IGMP]
+    3: [IPv4, IPv6],
+    4: [TCP]
 }
 
 
@@ -36,12 +36,10 @@ class Program:
         for osi_layer in range(min(deps.keys()), max(deps.keys()) + 1):
             layer_protocols = deps[osi_layer]
 
-            # Start layer code with comment
+            # Start layer code with comment and define next protocol
             layer_code = "\n// OSI %d\n" % osi_layer
-
-            # Define next protocol variable if necessary
-            if osi_layer != max(deps.keys()):
-                layer_code += "uint16_t proto%s = -1;\n" % (osi_layer + 1)
+            # FIXME 2-1-19 protoX variable generated regardless of whether a next layer exists
+            layer_code += "uint16_t proto%s = -1;\n" % (osi_layer + 1)
 
             # Add loading of protocols
             if osi_layer == min(deps.keys()):
