@@ -1,4 +1,4 @@
-from Modules import *
+from Protocols import *
 
 
 class Rule:
@@ -25,12 +25,12 @@ class Rule:
 
 
 class Property:
-    def __init__(self, mod: Module, name: str):
-        self.module = mod
+    def __init__(self, proto: Protocol, name: str):
+        self.proto = proto
         self.name = name
 
     def __str__(self):
-        return '%s->%s' % (self.module.reference, self.name)
+        return '%s->%s' % (self.proto.struct_name, self.name)
 
 
 ETH_SRC = Property(Ethernet, 'h_source')

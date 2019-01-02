@@ -1,58 +1,79 @@
-from Modules import *
-from util import file_str
+from Protocols import *
+from util import file_str, code_insert
+
+PROGRAM_TEMPLATE = file_str('templates/program.c')
+
+EXAMPLE_PROTOCOLS = {
+    2: [Ethernet],
+    3: [IPv4, IPv6, ARP],
+    4: [TCP, UDP, ICMP, ICMPv6, IGMP]
+}
 
 
 class Program:
-    """
-    Class to generate BPF programs that can access packet fields
-    """
-    MOD = "$MODULE_NAME"
-    DEFAULT_MOD = "DDoSMitigation"
-    PROG = "$PROG_NAME"
-    DEFAULT_PROG = "xdp_filter"
-    CODE = "$CODE"
-    POS = "$MATCH"
-    NEG = "$NO_MATCH"
+    @staticmethod
+    def __get_protocols(deps):
+        return [p for l in deps.values() for p in l]
 
     @staticmethod
-    def generate(module: Module, code: str = "", blacklist=True, mod_name=DEFAULT_MOD, prog_name=DEFAULT_PROG):
-        """
-        Generates a program with the initial code for the modules and the access code given as a parameter
+    def __include_code(deps):
+        return ['#include <%s>' % i for p in Program.__get_protocols(deps) for i in p.includes]
 
-        :param module: Module to load in
-        :param code: Code to access the module fields
-        :param blacklist: If true, the program will allow all packets, unless $MATCH is returned. If false, the program
-                          will block all packets except if #MATCH is returned.
-        :param mod_name: Name of the module
-        :param prog_name: Name of the program
-        :return:
-        """
-        template = module.get_final_template()
-        code = code.splitlines(False)
+    @staticmethod
+    def __struct_code(deps):
+        return ['struct %-8s *%-5s = NULL;' % (p.struct_type, p.struct_name) for p in Program.__get_protocols(deps)]
 
-        # Fix indentation of inserted code
-        # TODO To utility function?
-        code_index = -1
-        code_indent = ''
-        for i, line in enumerate(template):
-            if "$CODE" in line:
-                code_indent = line[:line.index("$CODE")]
-                code_index = i
-                break
+    @staticmethod
+    def generate_template(deps):
+        # Load general template
+        result = PROGRAM_TEMPLATE
 
-        filled_template = template[:code_index] + [code_indent + c for c in code] + template[code_index + 1:]
+        # Insert include and struct code
+        result = code_insert(result, '$INCLUDES', '\n'.join(Program.__include_code(deps)))
+        result = code_insert(result, '$STRUCTS', '\n'.join(Program.__struct_code(deps)))
 
-        result = "\n".join(filled_template) \
-            .replace(Program.MOD, mod_name) \
-            .replace(Program.PROG, prog_name)
+        # Loop all dependencies by layer
+        for osi_layer in range(min(deps.keys()), max(deps.keys()) + 1):
+            layer_protocols = deps[osi_layer]
 
-        if blacklist:
-            result = result.replace(Program.POS, "XDP_DROP").replace(Program.NEG, "XDP_PASS")
-        else:
-            result = result.replace(Program.POS, "XDP_PASS").replace(Program.NEG, "XDP_DROP")
+            # Start layer code with comment
+            layer_code = "\n// OSI %d\n" % osi_layer
 
-        return result
+            # Define next protocol variable if necessary
+            if osi_layer != max(deps.keys()):
+                layer_code += "uint16_t proto%s = -1;\n" % (osi_layer + 1)
+
+            # Add loading of protocols
+            if osi_layer == min(deps.keys()):
+                # Lowest layer (Ethernet) only has one protocol and does not need a 'switch'
+                layer_code += layer_protocols[0].load_code()
+            else:
+                # Higher layer protocols should check if the packet uses this protocol
+                if_template = "if (proto%d == %s%s) {\n\t$CODE\n}\nelse "
+
+                # Loop all layers to create the correct condition and load code
+                for p in layer_protocols:
+
+                    # Make sure that only matching lower protocols are matched
+                    and_clause = ''
+                    if p.osi - 1 > Ethernet.osi:
+                        and_clause = ' && (' + ' || '.join(
+                            ['proto%s == %s' % (p.osi - 1, dep.protocol_id) for dep in p.lower_protocols]) + ")"
+
+                    # Apply clause and code
+                    p_if = if_template % (p.osi, p.protocol_id, and_clause)
+                    layer_code += code_insert(p_if, '$CODE', p.load_code())
+
+                # Finish layer with: if no protocol matched, go to rules directly
+                layer_code += "{\n\tgoto $LBL_RULES;\n}"
+
+            # Insert the code of the layer and go to the next
+            result = code_insert(result, '$CODE', layer_code, False)
+
+        # Return the result with the $CODE marker
+        return result.replace("$CODE", "")
 
 
-if __name__ == "__main__":
-    print(Program.generate(TCPv4, file_str('code/custom_code.c')))
+if __name__ == '__main__':
+    code = Program.generate_template(EXAMPLE_PROTOCOLS)
+    print(code)
