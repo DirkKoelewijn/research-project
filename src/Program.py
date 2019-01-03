@@ -1,5 +1,5 @@
-import Conditions as C
 import Protocols as P
+import Rules as C
 import Util
 
 
@@ -11,7 +11,7 @@ class Program:
     OutputFolder = 'code/'
 
     @staticmethod
-    def __get_functions(conditions: [C.Condition]):
+    def __get_functions(conditions: [C.Rule]):
         """
         Returns all functions that are required by conditions
 
@@ -24,7 +24,7 @@ class Program:
         return list(functions)
 
     @staticmethod
-    def __get_dependencies(conditions: [C.Condition]):
+    def __get_dependencies(conditions: [C.Rule]):
         """
         Returns all protocols that are required by conditions
 
@@ -44,7 +44,7 @@ class Program:
         return res
 
     @staticmethod
-    def generate(conditions: [C.Condition], file: str = None, blacklist=True):
+    def generate(conditions: [C.Rule], file: str = None, blacklist=True):
         """
         Generates a BPF program from a list of conditions.
 
