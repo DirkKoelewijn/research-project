@@ -69,3 +69,43 @@ following properties are supported:
 
 Every property can be used with every numerical comparator (`==`, `!=`, `<`. `<=`, `>=`, `>`), as long as the value
 matches the property. Please note that the IP and MAC addresses always should be supplied in a string.
+
+Some examples of the usage of properties:
+```python
+from Protocols import IPv4, TCP, UDP, Ethernet
+
+# Some valid conditions
+a = Ethernet['src'] != 'b1:30:a2:bf:0f:c7'
+b = IPv4['src'] < '100.0.0.0'
+c = TCP['fin'] == 1
+d = UDP['len'] >= 100
+```
+
+#### Combined rules
+Rules and conditions can be combined indefinitely using `OR` or `AND` operations as follows:
+
+```python
+from Rules import Rule
+from Protocols import IPv4, Ethernet
+
+# Some valid conditions
+a = Ethernet['src'] != 'b1:30:a2:bf:0f:c7'
+b = IPv4['src'] < '100.0.0.0'
+
+# Combine conditions by AND
+c = a & b
+c = Rule.all(a, b)
+d = Rule(Rule(a), '&&', Rule(b))
+
+# Combine conditions by OR
+d = a | b
+d = Rule.one(a, b)
+d = Rule(Rule(a), '||', Rule(b))
+
+# THIS WON'T WORK: Conditions cannot be combined with rules with & and |
+error = Rule(a) | b
+# But can be combined with Rule.all() and Rule.one()
+working = Rule.all(Rule(a), b)
+``` 
+
+> To avoid illegal combination of rules and conditions, using `Rule.all()` and `Rule.one()` is recommended
