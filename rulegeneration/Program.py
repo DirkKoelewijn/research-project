@@ -1,46 +1,37 @@
-import Conditions
-import Protocols
+import Conditions as C
+import Protocols as P
 import Util
 
 
-# TODO Clean up
-# TODO Doc
 class Program:
+    """
+    Class to generate BPF programs from conditions
+    """
     Template = Util.file_str('templates/program.c')
 
     @staticmethod
-    def generate(rules: [Conditions.Condition], blacklist=True):
-        # Extract dependencies from rules
-        dependencies = Program.__get_dependencies(rules)
+    def __get_functions(conditions: [C.Condition]):
+        """
+        Returns all functions that are required by conditions
 
-        # Generate code template based on dependencies
-        result = Program.generate_template(dependencies)
-
-        # Get and insert functions
-        functions = Program.__get_functions(rules)
-        func_code = '\n'.join([str(func) for func in functions])
-        result = Util.code_insert(result, '$FUNCTIONS', func_code, True)
-
-        # Generate and insert rule code
-        rule_code = '\n'.join([rule.code() for rule in rules])
-        result = Util.code_insert(result, '$RULES', rule_code, True)
-
-        # Replace match markers with correct value
-        result = result.replace('$NO_MATCH', 'XDP_PASS' if blacklist else 'XDP_DROP').replace(
-            '$MATCH', 'XDP_DROP' if blacklist else 'XDP_PASS')
-        return result
-
-    @staticmethod
-    def __get_functions(rules: [Conditions.Condition]):
+        :param conditions: Conditions
+        :return: All required functions
+        """
         functions = set()
-        for r in rules:
-            functions = functions | r.functions()
+        for c in conditions:
+            functions = functions | c.functions()
         return list(functions)
 
     @staticmethod
-    def __get_dependencies(rules: [Conditions.Condition]):
+    def __get_dependencies(conditions: [C.Condition]):
+        """
+        Returns all protocols that are required by conditions
+
+        :param conditions: Conditions
+        :return: All used protocols
+        """
         res = {}
-        for deps in [r.dependencies() for r in rules]:
+        for deps in [r.dependencies() for r in conditions]:
             for k, v in deps.items():
                 if k not in res:
                     res[k] = []
@@ -52,25 +43,83 @@ class Program:
         return res
 
     @staticmethod
+    def generate(conditions: [C.Condition], blacklist=True):
+        """
+        Generates a BPF program from a list of conditions.
+
+        If blacklisting is used, the program will drop all packets
+        that match to one or more conditions. Otherwise, the program
+        will drop all packets that do not match a condition.
+
+        :param conditions: List of condition
+        :param blacklist: Whether to use blacklisting (Defaults to true)
+        :return: Full C code of BPF program
+        """
+        # Extract dependencies from conditions
+        dependencies = Program.__get_dependencies(conditions)
+
+        # Generate code template based on dependencies
+        result = Program.__generate_template(dependencies)
+
+        # Get and insert functions
+        functions = Program.__get_functions(conditions)
+        func_code = '\n'.join([str(func) for func in functions])
+        result = Util.code_insert(result, '$FUNCTIONS', func_code, True)
+
+        # Generate and insert condition code
+        rule_code = '\n'.join([c.code() for c in conditions])
+        result = Util.code_insert(result, '$RULES', rule_code, True)
+
+        # Replace match markers with correct value
+        result = result.replace('$NO_MATCH', 'XDP_PASS' if blacklist else 'XDP_DROP').replace(
+            '$MATCH', 'XDP_DROP' if blacklist else 'XDP_PASS')
+        return result
+
+    @staticmethod
     def __get_protocols(deps):
-        return [p for l in deps.values() for p in l]
+        """
+        Gets all protocols from a set of dependencies
+
+        :param deps: Dict with dependencies grouped by osi layer
+        :return: Set of all protocols
+        """
+        return set([p for l in deps.values() for p in l])
 
     @staticmethod
     def __include_code(deps):
-        return ['#include <%s>' % i for p in Program.__get_protocols(deps) for i in p.includes]
+        """
+        Returns code containing all required include statements
+
+        :param deps: Dict with dependencies grouped by osi layer
+        :return: Code fragment with include statements
+        """
+        return '\n'.join(['#include <%s>' % i for p in Program.__get_protocols(deps) for i in p.includes])
 
     @staticmethod
     def __struct_code(deps):
-        return ['struct %-8s *%-5s = NULL;' % (p.struct_type, p.struct_name) for p in Program.__get_protocols(deps)]
+        """
+        Returns code containing all required struct definitions
+
+        :param deps: Dict with dependencies grouped by osi layer
+        :return: Code fragment with struct definitions
+        """
+        return '\n'.join(
+            ['struct %-8s *%-5s = NULL;' % (p.struct_type, p.struct_name) for p in Program.__get_protocols(deps)])
 
     @staticmethod
-    def generate_template(deps):
+    def __generate_template(deps):
+        """
+        Generates the template code to which the rules can be added
+
+        :param deps: Dict with dependencies grouped by osi layer
+        :return: Code template in which rules can be added
+        """
         # Load general template
         result = Program.Template
 
         # Insert include and struct code
-        result = Util.code_insert(result, '$INCLUDES', '\n'.join(Program.__include_code(deps)))
-        result = Util.code_insert(result, '$STRUCTS', '\n'.join(Program.__struct_code(deps)))
+        result = Util.code_insert(result, '$INCLUDES', Program.__include_code(deps))
+        result = Util.code_insert(result, '$STRUCTS', Program.__struct_code(deps))
 
         # Loop all dependencies by layer
         for osi_layer in range(min(deps.keys()), max(deps.keys()) + 1):
@@ -93,7 +142,7 @@ class Program:
 
                     # Make sure that only matching lower protocols are matched
                     and_clause = ''
-                    if p.osi - 1 > Protocols.Ethernet.osi:
+                    if p.osi - 1 > P.Ethernet.osi:
                         and_clause = ' && (' + ' || '.join(
                             ['proto%s == %s' % (p.osi - 1, dep.protocol_id) for dep in p.lower_protocols]) + ")"
 
@@ -109,9 +158,3 @@ class Program:
 
         # Return the result with the $CODE marker
         return result.replace("$CODE", "")
-
-
-if __name__ == '__main__':
-    app_data = Conditions.Condition.parse(Protocols.IPv4['src'] == '1.2.3.4')
-    x = Program.generate([app_data])
-    print(x)

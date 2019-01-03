@@ -42,7 +42,10 @@ int xdp_filter(struct xdp_md *ctx) {
     }
 
     Rules:
-    if (ip != NULL && ((ip->saddr == 1477051956) || (ip->saddr == 308428311))) return XDP_DROP;
+    if (ip != NULL){
+        // Condition: IPv4[src] == 104.28.23.236
+        if (ip->saddr == 3960937576) return XDP_DROP;
+    }
 
     return XDP_PASS;
 }
