@@ -1,58 +1,160 @@
-from Modules import *
-from util import file_str
+import Conditions as C
+import Protocols as P
+import Util
 
 
 class Program:
     """
-    Class to generate BPF programs that can access packet fields
+    Class to generate BPF programs from conditions
     """
-    MOD = "$MODULE_NAME"
-    DEFAULT_MOD = "DDoSMitigation"
-    PROG = "$PROG_NAME"
-    DEFAULT_PROG = "xdp_filter"
-    CODE = "$CODE"
-    POS = "$MATCH"
-    NEG = "$NO_MATCH"
+    Template = Util.file_str('templates/program.c')
 
     @staticmethod
-    def generate(module: Module, code: str = "", blacklist=True, mod_name=DEFAULT_MOD, prog_name=DEFAULT_PROG):
+    def __get_functions(conditions: [C.Condition]):
         """
-        Generates a program with the initial code for the modules and the access code given as a parameter
+        Returns all functions that are required by conditions
 
-        :param module: Module to load in
-        :param code: Code to access the module fields
-        :param blacklist: If true, the program will allow all packets, unless $MATCH is returned. If false, the program
-                          will block all packets except if #MATCH is returned.
-        :param mod_name: Name of the module
-        :param prog_name: Name of the program
-        :return:
+        :param conditions: Conditions
+        :return: All required functions
         """
-        template = module.get_final_template()
-        code = code.splitlines(False)
+        functions = set()
+        for c in conditions:
+            functions = functions | c.functions()
+        return list(functions)
 
-        # Fix indentation of inserted code
-        # TODO To utility function?
-        code_index = -1
-        code_indent = ''
-        for i, line in enumerate(template):
-            if "$CODE" in line:
-                code_indent = line[:line.index("$CODE")]
-                code_index = i
-                break
+    @staticmethod
+    def __get_dependencies(conditions: [C.Condition]):
+        """
+        Returns all protocols that are required by conditions
 
-        filled_template = template[:code_index] + [code_indent + c for c in code] + template[code_index + 1:]
+        :param conditions: Conditions
+        :return: All used protocols
+        """
+        res = {}
+        for deps in [r.dependencies() for r in conditions]:
+            for k, v in deps.items():
+                if k not in res:
+                    res[k] = []
+                res[k].extend(v)
 
-        result = "\n".join(filled_template) \
-            .replace(Program.MOD, mod_name) \
-            .replace(Program.PROG, prog_name)
+        for k, v in res.items():
+            res[k] = list(set(v))
 
-        if blacklist:
-            result = result.replace(Program.POS, "XDP_DROP").replace(Program.NEG, "XDP_PASS")
-        else:
-            result = result.replace(Program.POS, "XDP_PASS").replace(Program.NEG, "XDP_DROP")
+        return res
 
+    @staticmethod
+    def generate(conditions: [C.Condition], blacklist=True):
+        """
+        Generates a BPF program from a list of conditions.
+
+        If blacklisting is used, the program will drop all packets
+        that match to one or more conditions. Otherwise, the program
+        will drop all packets that do not match a condition.
+
+        :param conditions: List of condition
+        :param blacklist: Whether to use blacklisting (Defaults to true)
+        :return: Full C code of BPF program
+        """
+        # Extract dependencies from conditions
+        dependencies = Program.__get_dependencies(conditions)
+
+        # Generate code template based on dependencies
+        result = Program.__generate_template(dependencies)
+
+        # Get and insert functions
+        functions = Program.__get_functions(conditions)
+        func_code = '\n'.join([str(func) for func in functions])
+        result = Util.code_insert(result, '$FUNCTIONS', func_code, True)
+
+        # Generate and insert condition code
+        rule_code = '\n'.join([c.code() for c in conditions])
+        result = Util.code_insert(result, '$RULES', rule_code, True)
+
+        # Replace match markers with correct value
+        result = result.replace('$NO_MATCH', 'XDP_PASS' if blacklist else 'XDP_DROP').replace(
+            '$MATCH', 'XDP_DROP' if blacklist else 'XDP_PASS')
         return result
 
+    @staticmethod
+    def __get_protocols(deps):
+        """
+        Gets all protocols from a set of dependencies
 
-if __name__ == "__main__":
-    print(Program.generate(TCPv4, file_str('code/custom_code.c')))
+        :param deps: Dict with dependencies grouped by osi layer
+        :return: Set of all protocols
+        """
+        return set([p for l in deps.values() for p in l])
+
+    @staticmethod
+    def __include_code(deps):
+        """
+        Returns code containing all required include statements
+
+        :param deps: Dict with dependencies grouped by osi layer
+        :return: Code fragment with include statements
+        """
+        return '\n'.join(['#include <%s>' % i for p in Program.__get_protocols(deps) for i in p.includes])
+
+    @staticmethod
+    def __struct_code(deps):
+        """
+        Returns code containing all required struct definitions
+
+        :param deps: Dict with dependencies grouped by osi layer
+        :return: Code fragment with struct definitions
+        """
+        return '\n'.join(
+            ['struct %-8s *%-5s = NULL;' % (p.struct_type, p.struct_name) for p in Program.__get_protocols(deps)])
+
+    @staticmethod
+    def __generate_template(deps):
+        """
+        Generates the template code to which the rules can be added
+
+        :param deps: Dict with dependencies grouped by osi layer
+        :return: Code template in which rules can be added
+        """
+        # Load general template
+        result = Program.Template
+
+        # Insert include and struct code
+        result = Util.code_insert(result, '$INCLUDES', Program.__include_code(deps))
+        result = Util.code_insert(result, '$STRUCTS', Program.__struct_code(deps))
+
+        # Loop all dependencies by layer
+        for osi_layer in range(min(deps.keys()), max(deps.keys()) + 1):
+            layer_protocols = deps[osi_layer]
+
+            # Start layer code with comment and define next protocol
+            layer_code = "\n// OSI %d\n" % osi_layer
+            layer_code += "uint16_t proto%s = -1;\n" % (osi_layer + 1)
+
+            # Add loading of protocols
+            if osi_layer == min(deps.keys()):
+                # Lowest layer (Ethernet) only has one protocol and does not need a 'switch'
+                layer_code += layer_protocols[0].load_code()
+            else:
+                # Higher layer protocols should check if the packet uses this protocol
+                if_template = "if (proto%d == %s%s) {\n\t$CODE\n}\nelse "
+
+                # Loop all layers to create the correct condition and load code
+                for p in layer_protocols:
+
+                    # Make sure that only matching lower protocols are matched
+                    and_clause = ''
+                    if p.osi - 1 > P.Ethernet.osi:
+                        and_clause = ' && (' + ' || '.join(
+                            ['proto%s == %s' % (p.osi - 1, dep.protocol_id) for dep in p.lower_protocols]) + ")"
+
+                    # Apply clause and code
+                    p_if = if_template % (p.osi, p.protocol_id, and_clause)
+                    layer_code += Util.code_insert(p_if, '$CODE', p.load_code())
+
+                # Finish layer with: if no protocol matched, go to rules directly
+                layer_code += "{\n\tgoto Rules;\n}"
+
+            # Insert the code of the layer and go to the next
+            result = Util.code_insert(result, '$CODE', layer_code, False)
+
+        # Return the result with the $CODE marker
+        return result.replace("$CODE", "")

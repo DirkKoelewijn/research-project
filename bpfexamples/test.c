@@ -12,16 +12,13 @@ int xdp_filter(struct xdp_md *ctx) {
     struct ethhdr *eth = data;
 
     // Get ethernet header offset and return if not enough data
-    uint16_t eth_proto;
     uint64_t offset = sizeof(*eth);
 
     if (data + offset  > data_end)
         return XDP_PASS;
 
-    eth_proto = eth->h_proto;
-
     // Check if next protocol matches IPv4
-    if (eth_proto == htons(ETH_P_IP)){
+    if (eth->h_proto == htons(ETH_P_IP)){
         struct iphdr *ip = data + offset;
 
         // Check if sufficient data
