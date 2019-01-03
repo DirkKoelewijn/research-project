@@ -1,5 +1,6 @@
 import Properties
 import Util
+from Conditions import Condition
 
 
 class Rule:
@@ -10,13 +11,16 @@ class Rule:
     NumericalComparators = ['==', '!=', '<', '<=', '>=', '>']
     Template = Util.file_str('templates/rule.c')
 
-    def __init__(self, left, comp, right):
+    def __init__(self, left, comp=None, right=None):
         """
-        Constructs a rule from the left and right property and a comparator
+        Constructs a rule from:
+        * a condition
+        * a property, numerical comparator and value (string or int)
+        * rule, binary comparator and rule
 
-        :param left: Property or rule
-        :param comp: Numerical comparator if left is property, binary comparator otherwise
-        :param right: Value as string/int if left is property, rule otherwise
+        :param left: Condition, property or rule
+        :param comp: Optional. Numerical comparator if left is property, binary comparator if left is rule
+        :param right: Optional. Value if left is property, rule if left is rule
         """
         if type(left) == Rule == type(right) and comp in Rule.BinaryComparators:
             self.end_node = False
@@ -30,9 +34,39 @@ class Rule:
             self.left = left
             self.comp = comp
             self.right = str(right)
+        elif isinstance(left, Condition):
+            r0 = Rule(left.left) if isinstance(left.left, Condition) else left.left
+            r1 = Rule(left.right) if isinstance(left.right, Condition) else left.right
+            self.__init__(r0, left.comp, r1)
         else:
             raise AssertionError('Rule expects (Property, Numerical Comparator, int | str) or '
                                  '(Rule, Binary Comparator, Rule)')
+
+    @staticmethod
+    def all(item, *items):
+        """
+        Combines conditions or rules into one rule with and (all should be true)
+        :param item: First condition or rule
+        :param items: Other conditions or rules
+        :return: Combined rule
+        """
+        result = item
+        for i in items:
+            result = result & i
+        return result if isinstance(result, Rule) else Rule(result)
+
+    @staticmethod
+    def one(item, *items):
+        """
+        Combines conditions or rules into one rule with or (one should be true)
+        :param item: First condition or rule
+        :param items: Other conditions or rules
+        :return: Combined rule
+        """
+        result = item
+        for i in items:
+            result = result | i
+        return result if isinstance(result, Rule) else Rule(result)
 
     @staticmethod
     def parse(*tuples: tuple, use_or=False):
