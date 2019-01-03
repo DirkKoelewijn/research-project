@@ -1,5 +1,5 @@
 import Protocols as P
-import Rules as C
+import Rules as R
 import Util
 
 
@@ -11,7 +11,7 @@ class Program:
     OutputFolder = 'code/'
 
     @staticmethod
-    def __get_functions(conditions: [C.Rule]):
+    def __get_functions(conditions: [R.Rule]):
         """
         Returns all functions that are required by conditions
 
@@ -24,7 +24,7 @@ class Program:
         return list(functions)
 
     @staticmethod
-    def __get_dependencies(conditions: [C.Rule]):
+    def __get_dependencies(conditions: [R.Rule]):
         """
         Returns all protocols that are required by conditions
 
@@ -44,7 +44,7 @@ class Program:
         return res
 
     @staticmethod
-    def generate(conditions: [C.Rule], file: str = None, blacklist=True):
+    def generate(rules: [R.Rule], file: str = None, blacklist=True):
         """
         Generates a BPF program from a list of conditions.
 
@@ -53,23 +53,23 @@ class Program:
         will drop all packets that do not match a condition.
 
         :param file: File to save the code to
-        :param conditions: List of condition
+        :param rules: List of condition
         :param blacklist: Whether to use blacklisting (Defaults to true)
-        :return: Full C code of BPF program
+        :return: Full R code of BPF program
         """
-        # Extract dependencies from conditions
-        dependencies = Program.__get_dependencies(conditions)
+        # Extract dependencies from rules
+        dependencies = Program.__get_dependencies(rules)
 
         # Generate code template based on dependencies
         result = Program.__generate_template(dependencies)
 
         # Get and insert functions
-        functions = Program.__get_functions(conditions)
+        functions = Program.__get_functions(rules)
         func_code = '\n'.join([str(func) for func in functions])
         result = Util.code_insert(result, '$FUNCTIONS', func_code, True)
 
         # Generate and insert condition code
-        rule_code = '\n'.join([c.code() for c in conditions])
+        rule_code = '\n'.join([r.code() for r in rules])
         result = Util.code_insert(result, '$RULES', rule_code, True)
 
         # Replace match markers with correct value

@@ -35,12 +35,12 @@ class Rule:
                                  '(Rule, Binary Comparator, Rule)')
 
     @staticmethod
-    def parse(*tuples: tuple, use_and=True):
+    def parse(*tuples: tuple, use_or=False):
         """
         Parse a rule from tuples containing left, right and comparator part
 
         :param tuples: Rule tuples
-        :param use_and: To use and when combining rules. Will use or if false.
+        :param use_or: To use and when combining rules. Will use or if false.
         :return: Parsed condition
         """
         if len(tuples) == 0:
@@ -50,7 +50,7 @@ class Rule:
 
         result = rules[0]
         for r in rules[1:]:
-            result = result & r if use_and else result | r
+            result = result | r if use_or else result & r
 
         return result
 
