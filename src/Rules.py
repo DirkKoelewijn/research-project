@@ -2,28 +2,28 @@ import Properties
 import Util
 
 
-class Condition:
+class Rule:
     """
-    Class to model conditions for filtering network packets
+    Class to model rules for filtering network packets
     """
     BinaryComparators = ['&&', '||']
     NumericalComparators = ['==', '!=', '<', '<=', '>=', '>']
-    Template = Util.file_str('templates/condition.c')
+    Template = Util.file_str('templates/rule.c')
 
     def __init__(self, left, comp, right):
         """
-        Constructs a condition from the left and right property and a comparator
+        Constructs a rule from the left and right property and a comparator
 
         :param left: Property or rule
         :param comp: Numerical comparator if left is property, binary comparator otherwise
         :param right: Value as string/int if left is property, rule otherwise
         """
-        if type(left) == Condition == type(right) and comp in Condition.BinaryComparators:
+        if type(left) == Rule == type(right) and comp in Rule.BinaryComparators:
             self.end_node = False
             self.left = left
             self.comp = comp
             self.right = right
-        elif isinstance(left, Properties.Property) and comp in Condition.NumericalComparators and (
+        elif isinstance(left, Properties.Property) and comp in Rule.NumericalComparators and (
                 isinstance(right, int) or isinstance(right, str)):
             # Property [!<>=]= value
             self.end_node = True
@@ -31,34 +31,34 @@ class Condition:
             self.comp = comp
             self.right = str(right)
         else:
-            raise AssertionError('Condition expects (Property, Numerical Comparator, int | str) or '
-                                 '(Condition, Binary Comparator, Condition)')
+            raise AssertionError('Rule expects (Property, Numerical Comparator, int | str) or '
+                                 '(Rule, Binary Comparator, Rule)')
 
     @staticmethod
-    def parse(*tuples: tuple, use_and=True):
+    def parse(*tuples: tuple, use_or=False):
         """
-        Parse a condition from tuples containing left, right and comparator part
+        Parse a rule from tuples containing left, right and comparator part
 
-        :param tuples: Condition tuples
-        :param use_and: To use and when combining rules. Will use or if false.
+        :param tuples: Rule tuples
+        :param use_or: To use and when combining rules. Will use or if false.
         :return: Parsed condition
         """
         if len(tuples) == 0:
-            raise AssertionError('Supply at least one condition')
+            raise AssertionError('Supply at least one rule')
 
-        rules = [Condition(*t) for t in tuples]
+        rules = [Rule(*t) for t in tuples]
 
         result = rules[0]
         for r in rules[1:]:
-            result = result & r if use_and else result | r
+            result = result | r if use_or else result & r
 
         return result
 
     def __and__(self, other):
-        return Condition(self, '&&', other)
+        return Rule(self, '&&', other)
 
     def __or__(self, other):
-        return Condition(self, '||', other)
+        return Rule(self, '||', other)
 
     def __str__(self):
         return self.condition()
@@ -67,7 +67,7 @@ class Condition:
         """
         Generates the condition for the rule (excluding check for correct packet protocol)
 
-        :return: Condition code
+        :return: Rule code
         """
         if self.end_node:
             return '%s' % self.left.compare_code(self.comp, self.right)
@@ -76,7 +76,7 @@ class Condition:
 
     def requirements(self):
         """
-        Returns the protocols this condition uses and therefore requires to be present in a packet before applying
+        Returns the protocols this rule uses and therefore requires to be present in a packet before applying
         :return: Required protocols
         """
         if self.end_node:
@@ -87,7 +87,7 @@ class Condition:
 
     def dependencies(self):
         """
-        Returns the protocols that need to be loaded for this condition, grouped by OSI layer
+        Returns the protocols that need to be loaded for this rule, grouped by OSI layer
         :return: Protocols grouped by OSI layer in dict
         """
         protocols = set(self.requirements())
@@ -102,7 +102,7 @@ class Condition:
 
     def functions(self):
         """
-        Returns all functions that this condition requires to be executed
+        Returns all functions that this rule requires to be executed
         :return: Required functions
         """
         if self.end_node:
@@ -124,16 +124,16 @@ class Condition:
     def code(self):
         """
         Returns the total code by applying the initial condition, the comment and the condition to the template
-        :return: Condition code
+        :return: Rule code
         """
         # Enforce brackets around condition
         condition = self.condition() if self.condition().startswith('(') else '(%s)' % self.condition()
 
-        return Condition.Template % (self.initial_condition(), self.comment(), condition)
+        return Rule.Template % (self.initial_condition(), self.comment(), condition)
 
     def comment(self):
         """
-        Generates the comment for this condition, which contains the condition in (more) readable language
+        Generates the comment for this rule, which contains the rule in (more) readable language
         :return: Comment
         """
         if self.end_node:

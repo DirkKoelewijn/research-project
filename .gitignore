@@ -58,7 +58,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# C extensions
+# R extensions
 *.so
 
 # Distribution / packaging

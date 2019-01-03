@@ -18,8 +18,8 @@ class Protocol:
 
         :param name: Normal name of the protocol
         :param osi: Number of the OSI layer (e.g: 2 (Ethernet))
-        :param includes: List of C libraries to include
-        :param struct_type: Name of the struct type in C (e.g: ethhdr)
+        :param includes: List of R libraries to include
+        :param struct_type: Name of the struct type in R (e.g: ethhdr)
         :param struct_name: Name to use for the struct
         :param lower_protocols: Protocols that can be below this layer
         :param p_id: Protocol ID at the lower layer

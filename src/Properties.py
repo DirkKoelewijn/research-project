@@ -98,7 +98,7 @@ class MAC(Property):
 
 class IpProperty(Property):
     """
-    Class to model a property that holds an IP address. Specify the value as "C.C.C.C" (C = 0 <= value < 256).
+    Class to model a property that holds an IP address. Specify the value as "R.R.R.R" (R = 0 <= value < 256).
     """
 
     def compare_code(self, comparer, value: str):
