@@ -87,20 +87,23 @@ Rules and conditions can be combined indefinitely using `OR` or `AND` operations
 ```python
 from Rules import Rule
 from Protocols import IPv4, Ethernet
+from Conditions import Condition
 
 # Some valid conditions
 a = Ethernet['src'] != 'b1:30:a2:bf:0f:c7'
 b = IPv4['src'] < '100.0.0.0'
 
 # Combine conditions by AND
-c = a & b
-c = Rule.all(a, b)
-d = Rule(Rule(a), '&&', Rule(b))
+cond = a & b
+cond = Condition(a, '&&', b)
+rule = Rule.all(a, b)
+rule = Rule(Rule(a), '&&', Rule(b))
 
 # Combine conditions by OR
-d = a | b
-d = Rule.one(a, b)
-d = Rule(Rule(a), '||', Rule(b))
+cond = a | b
+cond = Condition(a, '||', b)
+rule = Rule.one(a, b)
+rule = Rule(Rule(a), '||', Rule(b))
 
 # THIS WON'T WORK: Conditions cannot be combined with rules with & and |
 error = Rule(a) | b
