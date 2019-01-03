@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 
 import Functions
+from Conditions import Condition
 
 
 class Property(ABC):
@@ -34,22 +35,22 @@ class Property(ABC):
         return self.__str__()
 
     def __eq__(self, other):
-        return self, '==', other
+        return Condition(self, '==', other)
 
     def __ne__(self, other):
-        return self, '!=', other
+        return Condition(self, '!=', other)
 
     def __lt__(self, other):
-        return self, '<', other
+        return Condition(self, '<', other)
 
     def __le__(self, other):
-        return self, '<=', other
+        return Condition(self, '<=', other)
 
     def __ge__(self, other):
-        return self, '>=', other
+        return Condition(self, '>=', other)
 
     def __gt__(self, other):
-        return self, '>', other
+        return Condition(self, '>', other)
 
 
 class Singular(Property):

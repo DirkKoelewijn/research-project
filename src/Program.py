@@ -1,5 +1,5 @@
-import Protocols as P
-import Rules as R
+import Protocols
+import Rules
 import Util
 
 
@@ -11,28 +11,28 @@ class Program:
     OutputFolder = 'code/'
 
     @staticmethod
-    def __get_functions(conditions: [R.Rule]):
+    def __get_functions(rules: [Rules.Rule]):
         """
-        Returns all functions that are required by conditions
+        Returns all functions that are required by rules
 
-        :param conditions: Conditions
+        :param rules: Rules
         :return: All required functions
         """
         functions = set()
-        for c in conditions:
+        for c in rules:
             functions = functions | c.functions()
         return list(functions)
 
     @staticmethod
-    def __get_dependencies(conditions: [R.Rule]):
+    def __get_dependencies(rules: [Rules.Rule]):
         """
-        Returns all protocols that are required by conditions
+        Returns all protocols that are required by rules
 
-        :param conditions: Conditions
+        :param rules: Rules
         :return: All used protocols
         """
         res = {}
-        for deps in [r.dependencies() for r in conditions]:
+        for deps in [r.dependencies() for r in rules]:
             for k, v in deps.items():
                 if k not in res:
                     res[k] = []
@@ -44,7 +44,7 @@ class Program:
         return res
 
     @staticmethod
-    def generate(rules: [R.Rule], file: str = None, blacklist=True):
+    def generate(*rules: Rules.Rule, file: str = None, blacklist=True):
         """
         Generates a BPF program from a list of conditions.
 
@@ -53,7 +53,7 @@ class Program:
         will drop all packets that do not match a condition.
 
         :param file: File to save the code to
-        :param rules: List of condition
+        :param rules: List of rules
         :param blacklist: Whether to use blacklisting (Defaults to true)
         :return: Full R code of BPF program
         """
@@ -150,7 +150,7 @@ class Program:
 
                     # Make sure that only matching lower protocols are matched
                     and_clause = ''
-                    if p.osi - 1 > P.Ethernet.osi:
+                    if p.osi - 1 > Protocols.Ethernet.osi:
                         and_clause = ' && (' + ' || '.join(
                             ['proto%s == %s' % (p.osi - 1, dep.protocol_id) for dep in p.lower_protocols]) + ")"
 
