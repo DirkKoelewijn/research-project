@@ -152,3 +152,35 @@ sudo python bpf-loader.py test.c
 ```
 
 At the moment it is not possible to feed strings directly to BPF.
+
+### 1.5 Total example
+
+```python
+from Program import Program
+from Rules import Rule
+from Protocols import IPv4, TCP, UDP, Ethernet
+
+# Filter packets from 132.68.0.0/16 larger than 250 bytes
+rule1 = Rule.all(
+    Ethernet['len'] > 250,
+    IPv4['src'] >= '132.68.0.0',
+    IPv4['src'] <= '132.68.255.255'
+)
+
+# Filter packets from port 53 (DNS) larger than 1000
+rule2 = Rule.all(
+    Ethernet['len'] > 1000,
+    Rule.one(
+        UDP['src'] == 53,
+        TCP['src'] == 53
+    )
+)
+
+# Generate program
+Program.generate(rule1, rule2, file='test.c')
+```
+```
+$ sudo python bpf-loader.py test.c
+Loading bpf program
+Following traceprint, hit CTRL+C to stop and remove
+```
