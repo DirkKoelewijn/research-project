@@ -111,4 +111,20 @@ error = Rule(a) | b
 working = Rule.all(Rule(a), b)
 ``` 
 
-> To avoid illegal combination of rules and conditions, using `Rule.all()` and `Rule.one()` is recommended
+To avoid illegal combination of rules and conditions, using `Rule.all()` and `Rule.one()` is recommended:
+```python
+from Rules import Rule
+from Protocols import IPv4, TCP, UDP, Ethernet
+
+# Recommended way to create more complex rules
+rule = Rule.all(
+    Rule.one(
+        Ethernet['src'] != 'b1:30:a2:bf:0f:c7',
+        IPv4['src'] < '100.0.0.0',
+        IPv4['len'] >= 100
+    ), Rule.one(
+        TCP['fin'] == 1,
+        UDP['len'] >= 100
+    )
+)
+```
