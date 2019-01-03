@@ -10,14 +10,11 @@ Basically, this means doing three things:
 This repository uses the [BPF Compiler Collection](https://github.com/iovisor/bcc) to compile the code into eBPF. 
 You can find the installation instructions [here](https://github.com/iovisor/bcc/blob/master/INSTALL.md).
 
-
-## Short introduction
-
-### 1. Generate an eBPF program from a set of rules
+## 1. Generate an eBPF program from a set of rules
 The concept is simple: We want to define rules and then convert those rules into a runnable eBPF program that filters
 packets based on this same rules.
 
-#### Basic rules
+### 1.1 Basic rules
 A rule consists of one ore more conditions. A basic condition consists of:
 
 * a property (`Protocol['property']`, e.g: `IPv4['src']`)
@@ -38,7 +35,7 @@ rule = Rule(IPv4['src'] == '1.2.3.4')       # Condition directly in constructor
 rule = Rule(IPv4['src'], '==' ,'1.2.3.4')   # Separate parts of condition directly in Rule
 ```
 
-#### Properties
+### 1.2 Properties
 Each of the properties that can be used in a condition/rule belongs to a protocol, like `IPv4` or `TCP`. Currently, the
 following properties are supported:
 
@@ -81,7 +78,7 @@ c = TCP['fin'] == 1
 d = UDP['len'] >= 100
 ```
 
-#### Combined rules
+### 1.3 Combined rules
 Rules and conditions can be combined indefinitely using `OR` or `AND` operations as follows:
 
 ```python
@@ -128,3 +125,30 @@ rule = Rule.all(
     )
 )
 ```
+
+### 1.4 Generating and running program from rules
+Once the rules are defined, generating a program from a set of rules is simple:
+```python
+from Program import Program
+
+# Write program code to variable
+code = Program.generate(rule1, rule2, ruleX, .. ,ruleN)
+
+# Write program code to file
+Program.generate(*rules, file='test.c')
+
+# Optionally specify whitelisting
+Program.generate(*rules, blacklist=False)
+```
+
+The string or file will contain all C code of the eBPF program. The directory `src/code` contains `bpf-loader.py`
+which can load BPF C files into the kernel. To execute your freshly generated file:
+
+``` bash
+sudo python bpf-loader.py <filename>
+
+# For the program generated above
+sudo python bpf-loader.py test.c
+```
+
+At the moment it is not possible to feed strings directly to BPF.
