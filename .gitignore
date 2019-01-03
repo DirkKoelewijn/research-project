@@ -158,3 +158,5 @@ venv.bak/
 # mypy
 .mypy_cache/
 
+/rulegeneration/code/
+!/rulegeneration/code/bpf-loader.py
