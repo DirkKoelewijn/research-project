@@ -8,6 +8,7 @@ class Program:
     Class to generate BPF programs from conditions
     """
     Template = Util.file_str('templates/program.c')
+    OutputFolder = 'code/'
 
     @staticmethod
     def __get_functions(conditions: [C.Condition]):
@@ -43,7 +44,7 @@ class Program:
         return res
 
     @staticmethod
-    def generate(conditions: [C.Condition], blacklist=True):
+    def generate(conditions: [C.Condition], file: str = None, blacklist=True):
         """
         Generates a BPF program from a list of conditions.
 
@@ -51,6 +52,7 @@ class Program:
         that match to one or more conditions. Otherwise, the program
         will drop all packets that do not match a condition.
 
+        :param file: File to save the code to
         :param conditions: List of condition
         :param blacklist: Whether to use blacklisting (Defaults to true)
         :return: Full C code of BPF program
@@ -73,6 +75,12 @@ class Program:
         # Replace match markers with correct value
         result = result.replace('$NO_MATCH', 'XDP_PASS' if blacklist else 'XDP_DROP').replace(
             '$MATCH', 'XDP_DROP' if blacklist else 'XDP_PASS')
+
+        # Output if requested
+        if file is not None:
+            with open(Program.OutputFolder + file, 'w') as file:
+                file.write(result)
+
         return result
 
     @staticmethod
