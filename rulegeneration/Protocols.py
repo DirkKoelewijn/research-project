@@ -92,17 +92,17 @@ class Protocol:
 # Ethernet
 Ethernet = Protocol('Ethernet', 2, ['linux/if_ether.h'], 'ethhdr', 'eth', next_p='htons(eth->h_proto)', _return=True)
 
-Ethernet['len'] = Properties.Singular(Ethernet, 'length')
-Ethernet['src'] = Properties.MAC(Ethernet, 'h_source')
-Ethernet['dst'] = Properties.MAC(Ethernet, 'h_dest')
-Ethernet['next'] = Properties.Htons(Ethernet, "h_proto")
+Ethernet['len'] = Properties.Singular(Ethernet, 'length', 'len')
+Ethernet['src'] = Properties.MAC(Ethernet, 'h_source', 'src')
+Ethernet['dst'] = Properties.MAC(Ethernet, 'h_dest', 'dst')
+Ethernet['next'] = Properties.Htons(Ethernet, "h_proto", 'next')
 
 # IPv4
 IPv4 = Protocol('IPv4', 3, ['linux/ip.h'], 'iphdr', 'ip', [Ethernet], 'ETH_P_IP', 'ip->protocol', 'ip->ihl*4')
 
-IPv4['src'] = Properties.IpProperty(IPv4, 'saddr')
-IPv4['dst'] = Properties.IpProperty(IPv4, 'daddr')
-IPv4['len'] = Properties.Htons(IPv4, 'tot_len')
+IPv4['src'] = Properties.IpProperty(IPv4, 'saddr', 'src')
+IPv4['dst'] = Properties.IpProperty(IPv4, 'daddr', 'dst')
+IPv4['len'] = Properties.Htons(IPv4, 'tot_len', 'len')
 
 # IPv6
 # Properties not yet supported
@@ -127,8 +127,8 @@ IGMP = Protocol('IGMP', 4, ['linux/igmp.h'], 'igmphdr', 'igmp', [IPv4, IPv6], '2
 # TCP
 TCP = Protocol('TCP', 4, ['linux/tcp.h'], 'tcphdr', 'tcp', [IPv4, IPv6], '6')
 
-TCP['src'] = Properties.Htons(TCP, 'source')
-TCP['dst'] = Properties.Htons(TCP, 'dest')
+TCP['src'] = Properties.Htons(TCP, 'source', 'src')
+TCP['dst'] = Properties.Htons(TCP, 'dest', 'dst')
 TCP['fin'] = Properties.Normal(TCP, 'fin')
 TCP['syn'] = Properties.Normal(TCP, 'syn')
 TCP['rst'] = Properties.Normal(TCP, 'rst')
@@ -141,6 +141,6 @@ TCP['cwr'] = Properties.Normal(TCP, 'cwr')
 # UDP
 UDP = Protocol('UDP', 4, ['linux/udp.h'], 'udphdr', 'udp', [IPv4, IPv6], '17')
 
-UDP['src'] = Properties.Htons(UDP, 'source')
-UDP['dst'] = Properties.Htons(UDP, 'dest')
-UDP['len'] = Properties.Htons(UDP, 'len')
+UDP['src'] = Properties.Htons(UDP, 'source', 'src')
+UDP['dst'] = Properties.Htons(UDP, 'dest', 'dest')
+UDP['len'] = Properties.Htons(UDP, 'len', 'len')

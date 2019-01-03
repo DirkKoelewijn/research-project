@@ -9,9 +9,13 @@ class Property(ABC):
     """
     function = None
 
-    def __init__(self, proto, name: str):
+    def __init__(self, proto, var: str, name=None):
         self.proto = proto
-        self.name = name
+        self.var = var
+        self.__name = var if name is None else name
+
+    def name(self):
+        return '%s[%s]' % (self.proto.name, self.__name)
 
     @abstractmethod
     def compare_code(self, comparer, value: str):
@@ -24,7 +28,7 @@ class Property(ABC):
         raise NotImplementedError
 
     def __str__(self):
-        return "%s->%s" % (self.proto.struct_name, self.name)
+        return "%s->%s" % (self.proto.struct_name, self.var)
 
     def __repr__(self):
         return self.__str__()
@@ -58,7 +62,7 @@ class Singular(Property):
         return "%s %s %s" % (self, comparer, value)
 
     def __str__(self):
-        return self.name
+        return self.var
 
 
 class Normal(Property):

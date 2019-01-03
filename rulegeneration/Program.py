@@ -1,18 +1,15 @@
+import Conditions
 import Protocols
-import Rules
-from Util import file_str, code_insert
-
-PROGRAM_TEMPLATE = file_str('templates/program.c')
-
-RULE_TEMPLATE = file_str('templates/rule.c')
+import Util
 
 
 # TODO Clean up
 # TODO Doc
 class Program:
+    Template = Util.file_str('templates/program.c')
 
     @staticmethod
-    def generate(rules: [Rules.Rule], blacklist=True):
+    def generate(rules: [Conditions.Condition], blacklist=True):
         # Extract dependencies from rules
         dependencies = Program.__get_dependencies(rules)
 
@@ -22,29 +19,26 @@ class Program:
         # Get and insert functions
         functions = Program.__get_functions(rules)
         func_code = '\n'.join([str(func) for func in functions])
-        result = code_insert(result, '$FUNCTIONS', func_code, True)
+        result = Util.code_insert(result, '$FUNCTIONS', func_code, True)
 
         # Generate and insert rule code
-        # TODO Move template to Rules.py
-        rule_code = '\n'.join([RULE_TEMPLATE % (rule.initial_condition(), rule.code()) for rule in rules])
-        result = code_insert(result, '$RULES', rule_code, True)
+        rule_code = '\n'.join([rule.code() for rule in rules])
+        result = Util.code_insert(result, '$RULES', rule_code, True)
 
-        if blacklist:
-            result = result.replace('$NO_MATCH', 'XDP_PASS').replace('$MATCH', 'XDP_DROP')
-        else:
-            result = result.replace('$MATCH', 'XDP_PASS').replace('$NO_MATCH', 'XDP_DROP')
-
+        # Replace match markers with correct value
+        result = result.replace('$NO_MATCH', 'XDP_PASS' if blacklist else 'XDP_DROP').replace(
+            '$MATCH', 'XDP_DROP' if blacklist else 'XDP_PASS')
         return result
 
     @staticmethod
-    def __get_functions(rules: [Rules.Rule]):
+    def __get_functions(rules: [Conditions.Condition]):
         functions = set()
         for r in rules:
             functions = functions | r.functions()
         return list(functions)
 
     @staticmethod
-    def __get_dependencies(rules: [Rules.Rule]):
+    def __get_dependencies(rules: [Conditions.Condition]):
         res = {}
         for deps in [r.dependencies() for r in rules]:
             for k, v in deps.items():
@@ -72,11 +66,11 @@ class Program:
     @staticmethod
     def generate_template(deps):
         # Load general template
-        result = PROGRAM_TEMPLATE
+        result = Program.Template
 
         # Insert include and struct code
-        result = code_insert(result, '$INCLUDES', '\n'.join(Program.__include_code(deps)))
-        result = code_insert(result, '$STRUCTS', '\n'.join(Program.__struct_code(deps)))
+        result = Util.code_insert(result, '$INCLUDES', '\n'.join(Program.__include_code(deps)))
+        result = Util.code_insert(result, '$STRUCTS', '\n'.join(Program.__struct_code(deps)))
 
         # Loop all dependencies by layer
         for osi_layer in range(min(deps.keys()), max(deps.keys()) + 1):
@@ -84,7 +78,6 @@ class Program:
 
             # Start layer code with comment and define next protocol
             layer_code = "\n// OSI %d\n" % osi_layer
-            # FIXME 2-1-19 protoX variable generated regardless of whether a next layer exists
             layer_code += "uint16_t proto%s = -1;\n" % (osi_layer + 1)
 
             # Add loading of protocols
@@ -106,13 +99,19 @@ class Program:
 
                     # Apply clause and code
                     p_if = if_template % (p.osi, p.protocol_id, and_clause)
-                    layer_code += code_insert(p_if, '$CODE', p.load_code())
+                    layer_code += Util.code_insert(p_if, '$CODE', p.load_code())
 
                 # Finish layer with: if no protocol matched, go to rules directly
                 layer_code += "{\n\tgoto Rules;\n}"
 
             # Insert the code of the layer and go to the next
-            result = code_insert(result, '$CODE', layer_code, False)
+            result = Util.code_insert(result, '$CODE', layer_code, False)
 
         # Return the result with the $CODE marker
         return result.replace("$CODE", "")
+
+
+if __name__ == '__main__':
+    app_data = Conditions.Condition.parse(Protocols.IPv4['src'] == '1.2.3.4')
+    x = Program.generate([app_data])
+    print(x)
