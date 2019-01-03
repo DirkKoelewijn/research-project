@@ -6,59 +6,66 @@ Basically, this means doing three things:
 2. Generate these filtering rules out of a DDoS attack fingerprint from [DDoSDB.org](https://ddosdb.org/).
 3. Evaluate the performance of these automatically generated rules.
 
-
 ## Prerequisites
-This repository uses the [BPF Compiler Collection](https://github.com/iovisor/bcc) to compile the code into BPF. 
+This repository uses the [BPF Compiler Collection](https://github.com/iovisor/bcc) to compile the code into eBPF. 
 You can find the installation instructions [here](https://github.com/iovisor/bcc/blob/master/INSTALL.md).
 
 
 ## Short introduction
 
 ### 1. Generate an eBPF program from a set of rules
-The concept is very simple: We have rules and we want to have a program that filters packets matching one of our rules.
-Likewise, we can also only allow packets that match one of our rules.
+The concept is simple: We want to define rules and then convert those rules into a runnable eBPF program that filters
+packets based on this same rules.
 
-Let's say we would like to filter all HTTP and TLS packets from DDoSDB.org. HTTP uses port `80`, TLS uses port `443` and
- DDoSDB is located at `104.28.22.236`. To create the rules for this, we could do the following:
+#### Basic rules
+A rule consists of one ore more conditions. A basic condition consists of:
 
+* a property (`Protocol['property']`, e.g: `IPv4['src']`)
+* a numerical comparator (`==`, `!=`, `<`. `<=`, `>=`, `>`)
+* a value to compare to (e.g: `1.2.3.4`)
+
+A basic rule with a basic condition is created as shown below:
 ```python
-from Protocols import IPv4, TCP
 from Rules import Rule
+from Protocols import IPv4
 
-# Create two rules
-tls     = Rule.parse(TCP['src'] == 443, IPv4['src'] == '104.28.22.236')
-http    = Rule.parse(TCP['src'] == 80 , IPv4['src'] == '104.28.22.236')
+# Creating a condition is pretty easy
+condition = IPv4['src'] == '1.2.3.4'
 
-# However, it would be more efficient if we would do it in one rule
-port    = Rule.parse(TCP['src'] == 443, TCP['src'] == 80, use_or=True)
-ddosdb  = Rule.parse(IPv4['src'] == '104.28.22.236')
-rule    = port & ddosdb
+# Creating a rule with the same condition can be done in various ways:
+rule = Rule(condition)                      # Condition in variable
+rule = Rule(IPv4['src'] == '1.2.3.4')       # Condition directly in constructor
+rule = Rule(IPv4['src'], '==' ,'1.2.3.4')   # Separate parts of condition directly in Rule
 ```
 
-> Full list of protocols and properties that can be used can be found in `Protocols.py` 
+#### Properties
+Each of the properties that can be used in a condition/rule belongs to a protocol, like `IPv4` or `TCP`. Currently, the
+following properties are supported:
 
-> In the future it might be possible to combine ands and ors more easily. For now, it isn't ;)
+| Protocol | Property | Description | Expected value type* | Example value |
+|----------|----------|-------------|----------------------|---------------|
+|`Ethernet`|`len`| Total packet length | `int in [0, 2^16)` | `41020`
+|`Ethernet`|`src`| Source MAC address | `FF:FF:FF:FF:FF:FF` | `b1:30:a2:bf:0f:c7`
+|`Ethernet`|`src`| Destination MAC address | `FF:FF:FF:FF:FF:FF` | `b1:30:a2:bf:0f:c7`
+|`Ethernet`|`next`| Next protocol | `int in [0, 2^16)` | `41020`
+|`IPv4`|`src`| Source IP address | `255.255.255.255` | `1.2.3.4`
+|`IPv4`|`dst`| Destination IP address | `255.255.255.255` | `1.2.3.4`
+|`IPv4`|`len`| IP packet length | `int in [0, 2^16)` | `41020`
+|`TCP`|`src`| TCP source port | `int in [0, 2^16)` | `41020`
+|`TCP`|`dst`| TCP destination port | `int in [0, 2^16)` | `41020`
+|`TCP`|`fin`| TCP FIN flag | `0` or `1` | `1`
+|`TCP`|`syn`| TCP SYN flag | `0` or `1` | `1`
+|`TCP`|`rst`| TCP RST flag | `0` or `1` | `1`
+|`TCP`|`psh`| TCP PSH flag | `0` or `1` | `1`
+|`TCP`|`ack`| TCP ACK flag | `0` or `1` | `1`
+|`TCP`|`urg`| TCP URG flag | `0` or `1` | `1`
+|`TCP`|`ece`| TCP ECE flag | `0` or `1` | `1`
+|`TCP`|`cwr`| TCP CWR flag | `0` or `1` | `1`
+|`UDP`|`src`| UDP source port | `int in [0, 2^16)` | `41020`
+|`UDP`|`dst`| UDP destination port | `int in [0, 2^16)` | `41020`
+|`UDP`|`len`| UDP packet length | `int in [0, 2^16)` | `41020`
 
-Now that we have created a rule or multiple rules, we want to create a program:
+> *A numerical value can also always be entered as a string
 
-```python
-from Program import Program
-
-# Combine two rules from earlier into a list and call generate
-rules = [tls, http]
-code = Program.generate(rules)
-
-# Or to save to file 'test.c'
-Program.generate(rules, 'test.c')
-```
-
-The result will be a completely valid C program that can be used with BPF's XDP. In the folder `src/code`, you can find
-`bpf-loader.py`. This python program can load a BPF XDP program into the kernel. To load our previous test program into 
-the kernel, type the following:
-```
->> sudo python bpf-loader.py test.c
-Loading bpf program
-Following traceprint, hit CTRL+C to stop and remove
-```
-
-Your program is now running! 
+Every property can be used with every numerical comparator (`==`, `!=`, `<`. `<=`, `>=`, `>`), as long as the value
+matches the property. Please note that the IP and MAC addresses always should be supplied in a string.
