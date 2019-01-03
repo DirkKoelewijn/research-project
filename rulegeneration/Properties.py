@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 
 import Functions
-import Protocols
 
 
 class Property(ABC):
@@ -10,7 +9,7 @@ class Property(ABC):
     """
     function = None
 
-    def __init__(self, proto: Protocols.Protocol, name: str):
+    def __init__(self, proto, name: str):
         self.proto = proto
         self.name = name
 
@@ -27,18 +26,42 @@ class Property(ABC):
     def __str__(self):
         return "%s->%s" % (self.proto.struct_name, self.name)
 
+    def __repr__(self):
+        return self.__str__()
 
-class SingularProperty(Property):
+    def __eq__(self, other):
+        return self, '==', other
+
+    def __ne__(self, other):
+        return self, '!=', other
+
+    def __lt__(self, other):
+        return self, '<', other
+
+    def __le__(self, other):
+        return self, '<=', other
+
+    def __ge__(self, other):
+        return self, '>=', other
+
+    def __gt__(self, other):
+        return self, '>', other
+
+
+class Singular(Property):
     """
     Class to model a property with a normal comparison that is not attached to a Protocol.
     The property value will be compared to the value without any conversion.
     """
 
     def compare_code(self, comparer, value: str):
-        return "%s %s %s" % (self.name, comparer, value)
+        return "%s %s %s" % (self, comparer, value)
+
+    def __str__(self):
+        return self.name
 
 
-class NormalProperty(Property):
+class Normal(Property):
     """
     Class to model a property with a normal comparison. The property
     value will be compared to the value without any conversion.
@@ -48,7 +71,7 @@ class NormalProperty(Property):
         return "%s %s %s" % (self, comparer, value)
 
 
-class HtonsProperty(Property):
+class Htons(Property):
     """
     Class to model a property where the bytes of the property value should be reversed before comparison.
     """
@@ -57,7 +80,7 @@ class HtonsProperty(Property):
         return "htons(%s) %s %s" % (self, comparer, value)
 
 
-class MacProperty(Property):
+class MAC(Property):
     """
     Class to model a property holding a MAC address. Specify the value as 'XX:XX:XX:XX:XX:XX' (X = hexadecimal).
     """

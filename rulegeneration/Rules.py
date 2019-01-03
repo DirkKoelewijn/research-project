@@ -1,16 +1,19 @@
-from Properties import *
-
-
 # TODO Add support for generated comment?
 # Add names to functions would be required in this case
+from Protocols import *
+
+
 class Rule:
+    BinaryComparators = ['&&', '||']
+    NumericalComparators = ['==', '!=', '<', '<=', '>=', '>']
+
     def __init__(self, left, comp, right):
-        if type(left) == Rule == type(right) and isinstance(comp, Comparator) and comp.is_binary():
+        if type(left) == Rule == type(right) and comp in Rule.BinaryComparators:
             self.end_node = False
             self.left = left
             self.comp = comp
             self.right = right
-        elif isinstance(left, Property) and isinstance(comp, Comparator) and comp.is_numeric and (
+        elif isinstance(left, Properties.Property) and comp in Rule.NumericalComparators and (
                 isinstance(right, int) or isinstance(right, str)):
             # Property [!<>=]= value
             self.end_node = True
@@ -18,8 +21,27 @@ class Rule:
             self.comp = comp
             self.right = str(right)
         else:
-            raise AssertionError('Rule expects (Property, Comparator(num), int | str) or (Rule, Comparator(bin), '
-                                 'Rule)')
+            raise AssertionError('Rule expects (Property, Numerical Comparator, int | str) or '
+                                 '(Rule, Binary Comparator, Rule)')
+
+    @staticmethod
+    def parse(*tuples: tuple, use_and=True):
+        if len(tuples) == 0:
+            raise AssertionError('Supply at least one condition')
+
+        rules = [Rule(*t) for t in tuples]
+
+        result = rules[0]
+        for r in rules[1:]:
+            result = result & r if use_and else result | r
+
+        return result
+
+    def __and__(self, other):
+        return Rule(self, '&&', other)
+
+    def __or__(self, other):
+        return Rule(self, '||', other)
 
     def __str__(self):
         return self.code()
@@ -62,37 +84,6 @@ class Rule:
         return ' && '.join(['%s != NULL' % p.struct_name for p in self.requirements()])
 
 
-class Comparator:
-
-    def __init__(self, string, binary=False):
-        self.string = string
-        self.binary = binary
-
-    def is_binary(self):
-        return self.binary
-
-    def is_numeric(self):
-        return not self.binary
-
-    def __str__(self):
-        return self.string
-
-
-Comparator.AND = Comparator('&&', True)
-Comparator.OR = Comparator('||', True)
-Comparator.EQ = Comparator('==')
-Comparator.NEQ = Comparator('!=')
-Comparator.LT = Comparator('<')
-Comparator.LTE = Comparator('<=')
-Comparator.GT = Comparator('>')
-Comparator.GTE = Comparator('>=')
-
 if __name__ == '__main__':
-    a = Rule(IP_SRC, Comparator.EQ, '140.82.118.4')
-    b = Rule(TCP_SRC, Comparator.GTE, '1024')
-    c = Rule(a, Comparator.AND, b)
-    print(c.requirements())
-    print(c.initial_condition())
-    print(c.dependencies())
-    print(c.functions())
-    print(c)
+    rule = Rule.parse(IPv4['src'] == '1.2.3.4', UDP['src'] <= 123, use_and=False)
+    print(rule)

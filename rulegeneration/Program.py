@@ -1,21 +1,18 @@
-from Rules import *
-from util import file_str, code_insert
+import Protocols
+import Rules
+from Util import file_str, code_insert
 
 PROGRAM_TEMPLATE = file_str('templates/program.c')
 
 RULE_TEMPLATE = file_str('templates/rule.c')
 
-EXAMPLE_PROTOCOLS = {
-    2: [Ethernet],
-    3: [IPv4, IPv6],
-    4: [TCP]
-}
 
-
+# TODO Clean up
+# TODO Doc
 class Program:
 
     @staticmethod
-    def generate(rules: [Rule], blacklist=True):
+    def generate(rules: [Rules.Rule], blacklist=True):
         # Extract dependencies from rules
         dependencies = Program.__get_dependencies(rules)
 
@@ -28,6 +25,7 @@ class Program:
         result = code_insert(result, '$FUNCTIONS', func_code, True)
 
         # Generate and insert rule code
+        # TODO Move template to Rules.py
         rule_code = '\n'.join([RULE_TEMPLATE % (rule.initial_condition(), rule.code()) for rule in rules])
         result = code_insert(result, '$RULES', rule_code, True)
 
@@ -39,14 +37,14 @@ class Program:
         return result
 
     @staticmethod
-    def __get_functions(rules: [Rule]):
+    def __get_functions(rules: [Rules.Rule]):
         functions = set()
         for r in rules:
             functions = functions | r.functions()
         return list(functions)
 
     @staticmethod
-    def __get_dependencies(rules: [Rule]):
+    def __get_dependencies(rules: [Rules.Rule]):
         res = {}
         for deps in [r.dependencies() for r in rules]:
             for k, v in deps.items():
@@ -102,7 +100,7 @@ class Program:
 
                     # Make sure that only matching lower protocols are matched
                     and_clause = ''
-                    if p.osi - 1 > Ethernet.osi:
+                    if p.osi - 1 > Protocols.Ethernet.osi:
                         and_clause = ' && (' + ' || '.join(
                             ['proto%s == %s' % (p.osi - 1, dep.protocol_id) for dep in p.lower_protocols]) + ")"
 
@@ -118,8 +116,3 @@ class Program:
 
         # Return the result with the $CODE marker
         return result.replace("$CODE", "")
-
-
-if __name__ == '__main__':
-    nu_nl = Rule(Rule(IP_SRC, Comparator.EQ, '52.6.10.88'), Comparator.OR, Rule(IP_SRC, Comparator.EQ, '23.62.98.18'))
-    print(Program.generate([nu_nl]))

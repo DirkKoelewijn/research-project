@@ -1,7 +1,7 @@
 import re
 
-from Properties import *
-from util import file_str
+import Properties
+import Util
 
 
 class Protocol:
@@ -9,7 +9,7 @@ class Protocol:
     Class to model an OSI layer protocol
     """
 
-    Template = file_str('templates/protocol.c')
+    Template = Util.file_str('templates/protocol.c')
 
     def __init__(self, name: str, osi: int, includes: [str], struct_type: str, struct_name: str,
                  lower_protocols: ['Protocol'] = None, p_id=None, next_p='-1', size=None, _return=False):
@@ -43,12 +43,19 @@ class Protocol:
         self.lower_protocols = lower_protocols
         self.protocol_id = p_id
         self.__return = _return
+        self.props = {}
 
     def __str__(self):
         return self.name
 
     def __repr__(self):
         return self.__str__()
+
+    def __setitem__(self, key: str, value: Properties.Property):
+        self.props[key] = value
+
+    def __getitem__(self, item: str):
+        return self.props[item]
 
     def load_code(self):
         """
@@ -85,17 +92,17 @@ class Protocol:
 # Ethernet
 Ethernet = Protocol('Ethernet', 2, ['linux/if_ether.h'], 'ethhdr', 'eth', next_p='htons(eth->h_proto)', _return=True)
 
-Ethernet.Len = SingularProperty(Ethernet, 'length')
-Ethernet.Src = MacProperty(Ethernet, 'h_source')
-Ethernet.Dst = MacProperty(Ethernet, 'h_dest')
-Ethernet.Next = HtonsProperty(Ethernet, "h_proto")
+Ethernet['len'] = Properties.Singular(Ethernet, 'length')
+Ethernet['src'] = Properties.MAC(Ethernet, 'h_source')
+Ethernet['dst'] = Properties.MAC(Ethernet, 'h_dest')
+Ethernet['next'] = Properties.Htons(Ethernet, "h_proto")
 
 # IPv4
 IPv4 = Protocol('IPv4', 3, ['linux/ip.h'], 'iphdr', 'ip', [Ethernet], 'ETH_P_IP', 'ip->protocol', 'ip->ihl*4')
 
-IPv4.Src = IpProperty(IPv4, 'saddr')
-IPv4.Dst = IpProperty(IPv4, 'daddr')
-IPv4.Len = HtonsProperty(IPv4, 'tot_len')
+IPv4['src'] = Properties.IpProperty(IPv4, 'saddr')
+IPv4['dst'] = Properties.IpProperty(IPv4, 'daddr')
+IPv4['len'] = Properties.Htons(IPv4, 'tot_len')
 
 # IPv6
 # Properties not yet supported
@@ -120,20 +127,20 @@ IGMP = Protocol('IGMP', 4, ['linux/igmp.h'], 'igmphdr', 'igmp', [IPv4, IPv6], '2
 # TCP
 TCP = Protocol('TCP', 4, ['linux/tcp.h'], 'tcphdr', 'tcp', [IPv4, IPv6], '6')
 
-TCP.SrcPort = HtonsProperty(TCP, 'source')
-TCP.DstPort = HtonsProperty(TCP, 'dest')
-TCP.Fin = NormalProperty(TCP, 'fin')
-TCP.Syn = NormalProperty(TCP, 'syn')
-TCP.Rst = NormalProperty(TCP, 'rst')
-TCP.Psh = NormalProperty(TCP, 'psh')
-TCP.Ack = NormalProperty(TCP, 'ack')
-TCP.Urg = NormalProperty(TCP, 'urg')
-TCP.Ece = NormalProperty(TCP, 'ece')
-TCP.Cwr = NormalProperty(TCP, 'cwr')
+TCP['src'] = Properties.Htons(TCP, 'source')
+TCP['dst'] = Properties.Htons(TCP, 'dest')
+TCP['fin'] = Properties.Normal(TCP, 'fin')
+TCP['syn'] = Properties.Normal(TCP, 'syn')
+TCP['rst'] = Properties.Normal(TCP, 'rst')
+TCP['psh'] = Properties.Normal(TCP, 'psh')
+TCP['ack'] = Properties.Normal(TCP, 'ack')
+TCP['urg'] = Properties.Normal(TCP, 'urg')
+TCP['ece'] = Properties.Normal(TCP, 'ece')
+TCP['cwr'] = Properties.Normal(TCP, 'cwr')
 
 # UDP
 UDP = Protocol('UDP', 4, ['linux/udp.h'], 'udphdr', 'udp', [IPv4, IPv6], '17')
 
-UDP.Src = HtonsProperty(UDP, 'source')
-UDP.Dst = HtonsProperty(UDP, 'dest')
-UDP.Len = HtonsProperty(UDP, 'len')
+UDP['src'] = Properties.Htons(UDP, 'source')
+UDP['dst'] = Properties.Htons(UDP, 'dest')
+UDP['len'] = Properties.Htons(UDP, 'len')
