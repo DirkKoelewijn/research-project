@@ -9,6 +9,7 @@ class Program:
     """
     Template = Util.file_str('templates/program.c')
     OutputFolder = 'code/'
+    MaxPropCount = 500
 
     @staticmethod
     def __get_functions(rules: [Rules.Rule]):
@@ -57,6 +58,13 @@ class Program:
         :param blacklist: Whether to use blacklisting (Defaults to true)
         :return: Full R code of BPF program
         """
+        # Check property count
+        prop_count = sum([len(r) for r in rules])
+        if prop_count > Program.MaxPropCount:
+            raise AssertionError(
+                "The number of properties in all rules together is limited to %s (Properties in these rules: %s)" % (
+                    Program.MaxPropCount, prop_count))
+
         # Extract dependencies from rules
         dependencies = Program.__get_dependencies(rules)
 
