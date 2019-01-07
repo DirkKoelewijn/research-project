@@ -1,7 +1,7 @@
 import re
 
-import Properties
 import Util
+from codegen import Properties
 
 
 class Protocol:

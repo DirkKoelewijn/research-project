@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
-import Functions
-from Conditions import Condition
+from codegen import Functions
+from codegen.Conditions import Condition
 
 
 class Property(ABC):
