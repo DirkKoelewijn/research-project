@@ -1,5 +1,5 @@
-from codegen.Protocols import IPv4, TCP
-from codegen.Rules import Rule
+from Protocols import IPv4, TCP
+from Rules import Rule
 
 # Easy rule typing
 ips = Rule.one(IPv4['src'] == '1.2.3.4', IPv4['src'] == '2.3.4.5')

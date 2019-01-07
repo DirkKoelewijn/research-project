@@ -1,5 +1,6 @@
+import Protocols
+import Rules
 import Util
-from codegen import Rules, Protocols
 
 
 class Program:

@@ -1,6 +1,6 @@
+import Properties
 import Util
-from codegen import Properties
-from codegen.Conditions import Condition
+from Conditions import Condition
 
 
 class Rule:
