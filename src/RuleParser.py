@@ -1,11 +1,22 @@
-from Fingerprints import Fingerprint
 from Rules import Rule
 
 
-class RuleGenerator:
+class RuleParser:
+    """
+    Class to parse rule from fingerprint
+    """
 
     @staticmethod
-    def generate(fingerprint: dict):
+    def parse(fingerprint: dict):
+        """
+        Parses a rule form a fingerprint
+
+        Supports tuple min, max notation for values. Example:
+        (1, 3) means include values between 1 and 3 (inclusive)
+
+        :param fingerprint: Fingerprint as {property: [values]}
+        :return:
+        """
         rules = []
         for prop, values in fingerprint.items():
             prop_rules = []
@@ -19,8 +30,3 @@ class RuleGenerator:
             rules.append(Rule.one(*prop_rules))
 
         return Rule.all(*rules)
-
-
-if __name__ == '__main__':
-    f = Fingerprint.parse('fingerprints/02a3a3fc266b09b7645e538efbc1ea11.json')
-    print(RuleGenerator.generate(f))
