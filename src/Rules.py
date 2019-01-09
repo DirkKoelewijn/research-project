@@ -38,6 +38,8 @@ class Rule:
             r0 = Rule(left.left) if isinstance(left.left, Condition) else left.left
             r1 = Rule(left.right) if isinstance(left.right, Condition) else left.right
             self.__init__(r0, left.comp, r1)
+        elif isinstance(left, Rule):
+            self.__init__(left.left, left.comp, left.right)
         else:
             raise AssertionError('Rule expects (Property, Numerical Comparator, int | str) or '
                                  '(Rule, Binary Comparator, Rule)')
@@ -50,10 +52,16 @@ class Rule:
         :param items: Other conditions or rules
         :return: Combined rule
         """
-        result = item
-        for i in items:
-            result = result & i
-        return result if isinstance(result, Rule) else Rule(result)
+        items = list(items)
+
+        if len(items) == 0:
+            return Rule(item)
+        elif len(items) == 1:
+            return Rule(item) & Rule(items[0])
+        else:
+            all_items = [item] + items
+            split = len(all_items) // 2
+            return Rule.all(*all_items[:split]) & Rule.all(*all_items[split:])
 
     @staticmethod
     def one(item, *items):
@@ -63,10 +71,16 @@ class Rule:
         :param items: Other conditions or rules
         :return: Combined rule
         """
-        result = item
-        for i in items:
-            result = result | i
-        return result if isinstance(result, Rule) else Rule(result)
+        items = list(items)
+
+        if len(items) == 0:
+            return Rule(item)
+        elif len(items) == 1:
+            return Rule(item) | Rule(items[0])
+        else:
+            all_items = [item] + items
+            split = len(all_items) // 2
+            return Rule.one(*all_items[:split]) | Rule.one(*all_items[split:])
 
     @staticmethod
     def parse(*tuples: tuple, use_or=False):
@@ -96,6 +110,13 @@ class Rule:
 
     def __str__(self):
         return self.condition()
+
+    def __len__(self):
+        if self.end_node:
+            return 1
+        else:
+            # noinspection PyTypeChecker
+            return len(self.left) + len(self.right)
 
     def condition(self):
         """

@@ -18,6 +18,9 @@ class Property(ABC):
     def name(self):
         return '%s[%s]' % (self.proto.name, self.__name)
 
+    def __hash__(self):
+        return self.name().__hash__()
+
     @abstractmethod
     def compare_code(self, comparer, value: str):
         """
