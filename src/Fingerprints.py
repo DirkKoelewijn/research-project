@@ -1,9 +1,7 @@
 import json
 
-from Program import Program
 from Protocols import IPv4, UDP, TCP
 from Util import file_str
-from rulegen.SimpleRuleGenerator import SimpleRuleGenerator
 
 
 class Fingerprint:
@@ -52,15 +50,3 @@ class Fingerprint:
                 result[v] = 1
 
         return result
-
-
-if __name__ == '__main__':
-    fingerprint = Fingerprint.parse('fingerprints/1714test.json')
-
-    for k, v in fingerprint.items():
-        if isinstance(v, list):
-            print(k, len(v))
-
-    rules = SimpleRuleGenerator().generate(fingerprint)
-    print(len(rules))
-    Program.generate(rules, file='output.c')
