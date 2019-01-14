@@ -91,7 +91,9 @@ class Fingerprint:
         :return: Expected size as rule
         """
         res = 0
-        for k, v in fingerprint:
+        for k, v in fingerprint.items():
             if isinstance(v, list):
                 res += len(v)
+            else:
+                res += 1
         return res

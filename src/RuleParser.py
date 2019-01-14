@@ -20,12 +20,16 @@ class RuleParser:
         rules = []
         for prop, values in fingerprint.items():
             prop_rules = []
-            for v in values:
-                if isinstance(v, tuple):
-                    min_v, max_v = v
-                    prop_rules.append((prop >= min_v) & (prop <= min_v))
-                else:
-                    prop_rules.append(prop == v)
+
+            if isinstance(values, list):
+                for v in values:
+                    if isinstance(v, tuple):
+                        min_v, max_v = v
+                        prop_rules.append((prop >= min_v) & (prop <= min_v))
+                    else:
+                        prop_rules.append(prop == v)
+            else:
+                prop_rules.append(prop == values)
 
             rules.append(Rule.one(*prop_rules))
 
