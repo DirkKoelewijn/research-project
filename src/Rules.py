@@ -8,7 +8,7 @@ class Rule:
     Class to model rules for filtering network packets
     """
     BinaryComparators = ['&&', '||']
-    NumericalComparators = ['==', '!=', '<', '<=', '>=', '>', '/=']  # /=: Match X first bits
+    NumericalComparators = ['==', '!=', '<', '<=', '>=', '>']
     Template = Util.file_str('templates/rule.c')
 
     def __init__(self, left, comp=None, right=None):
