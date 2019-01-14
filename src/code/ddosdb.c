@@ -2,7 +2,6 @@
 #include <linux/ip.h>
 #include <linux/if_ether.h>
 
-
 int xdp_filter(struct xdp_md *ctx) {
     // Load pointers to data and end of data
     void* data_end = (void*)(long)ctx->data_end;
@@ -44,8 +43,12 @@ int xdp_filter(struct xdp_md *ctx) {
     Rules:
     if (ip != NULL){
         // Condition: IPv4[src] == 104.28.22.236/16
-        if (htonl(ip->saddr) >> 16 == 26652) return XDP_DROP;
+        if (htonl(ip->saddr) >> 16 == 26652) {
+            bpf_trace_printk("$TP$\n");
+            return XDP_DROP;
+        }
     }
 
+    bpf_trace_printk("$TN$\n");
     return XDP_PASS;
 }
