@@ -25,7 +25,7 @@ class RuleParser:
                 for v in values:
                     if isinstance(v, tuple):
                         min_v, max_v = v
-                        prop_rules.append((prop >= min_v) & (prop <= min_v))
+                        prop_rules.append((prop >= min_v) & (prop <= max_v))
                     else:
                         prop_rules.append(prop == v)
             else:
