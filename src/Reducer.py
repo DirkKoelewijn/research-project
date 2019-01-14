@@ -77,10 +77,27 @@ class Reducer:
 
     @staticmethod
     def __ip_to_str(ip):
+        """
+        Converts an ip address as integer to a string
+        :param ip: IP address as integer
+        :return: IP address as string
+        """
         return str(ipaddress.IPv4Address(ip))
 
     @staticmethod
     def shift_aggregate(fingerprint, prop, shift, conv_func=None, conv_back=None, size=16):
+        """
+        Makes a fingerprint only use the first (size-shift) bits of a property for comparison and removes duplicates
+        The original fingerprint stays untouched, as this function uses deepcopy before applying any modifications.
+
+        :param fingerprint: Fingerprint to aggregate on
+        :param prop: Property of the fingerprint to aggregate on
+        :param shift: Number of bits to 'throw away'
+        :param conv_func: Optional. Function to convert value to a numeric value
+        :param conv_back: Optional. Function to convert a numeric value back
+        :param size: Size of the variable in bits
+        :return: New fingerprint instance with modifications
+        """
         result = deepcopy(fingerprint)
         values = result[prop]
 
@@ -101,12 +118,32 @@ class Reducer:
         return result
 
     @staticmethod
-    def shift_aggregate_ip(fingerprint, bits):
-        return Reducer.shift_aggregate(fingerprint, IPv4['src'], bits, Reducer.__ip_to_int, Reducer.__ip_to_str,
+    def shift_aggregate_ip(fingerprint, shift):
+        """
+        Makes a fingerprint only use the first (size-shift) bits of ips for comparison and removes duplicates
+        The original fingerprint stays untouched, as this function uses deepcopy before applying any modifications.
+
+        :param fingerprint: Fingerprint to aggregate on
+        :param shift: Number of bits to 'throw away'
+        :return: New fingerprint instance with modifications
+        """
+        return Reducer.shift_aggregate(fingerprint, IPv4['src'], shift, Reducer.__ip_to_int, Reducer.__ip_to_str,
                                        size=32)
 
     @staticmethod
-    def binary_aggregate(fingerprint, prop, bits, conv_func=None, conv_back=None, size=16):
+    def binary_aggregate(fingerprint, prop, shift, conv_func=None, conv_back=None, size=16):
+        """
+        Aggregates property values if values have the first (size-shift) bits in common.
+        The original fingerprint stays untouched, as this function uses deepcopy before applying any modifications.
+
+        :param fingerprint: Fingerprint to aggregate on
+        :param prop: Property of the fingerprint to aggregate on
+        :param shift: Number of bits to 'throw away'
+        :param conv_func: Optional. Function to convert value to a numeric value
+        :param conv_back: Optional. Function to convert a numeric value back
+        :param size: Size of the variable in bits
+        :return: New fingerprint instance with modifications
+        """
         result = deepcopy(fingerprint)
         values = result[prop]
 
@@ -123,14 +160,14 @@ class Reducer:
         groups = []
         group = [values[0]]
         for v in values[1:]:
-            if (v >> bits) == (values[-1] >> bits):
-                group.append(v >> bits << bits)
+            if (v >> shift) == (values[-1] >> shift):
+                group.append(v >> shift << shift)
             else:
                 groups.append(group)
                 group = [v]
 
         if len(group) >= 2:
-            group = Reducer.__bit_min_max(group[0], bits)
+            group = Reducer.__bit_min_max(group[0], shift)
         groups.append(group)
 
         # Convert values back if necessary
@@ -138,14 +175,22 @@ class Reducer:
             groups = [[conv_back(x) for x in g] for g in groups]
 
         # Reduce doubles
-        groups = [g[0] if len(g) == 1 else '%s/%s' % (g[0], size - bits) for g in groups]
+        groups = [g[0] if len(g) == 1 else '%s/%s' % (g[0], size - shift) for g in groups]
 
         result[prop] = groups
         return result
 
     @staticmethod
-    def binary_aggregate_ip(fingerprint, bits):
-        return Reducer.binary_aggregate(fingerprint, IPv4['src'], bits, Reducer.__ip_to_int, Reducer.__ip_to_str,
+    def binary_aggregate_ip(fingerprint, shift):
+        """
+        Makes a fingerprint only use the first (size-shift) bits of ips for comparison and removes duplicates
+        The original fingerprint stays untouched, as this function uses deepcopy before applying any modifications.
+
+        :param fingerprint: Fingerprint to aggregate on
+        :param shift: Number of bits to 'throw away'
+        :return: New fingerprint instance with modifications
+        """
+        return Reducer.binary_aggregate(fingerprint, IPv4['src'], shift, Reducer.__ip_to_int, Reducer.__ip_to_str,
                                         size=32)
 
     @staticmethod

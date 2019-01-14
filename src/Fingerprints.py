@@ -81,3 +81,17 @@ class Fingerprint:
                 result[v] = 1
 
         return result
+
+    @staticmethod
+    def rule_size(fingerprint):
+        """
+        Returns expected size if this fingerprint would be parsed to a rule
+
+        :param fingerprint: Fingerprint as {Property: [values]} dict
+        :return: Expected size as rule
+        """
+        res = 0
+        for k, v in fingerprint:
+            if isinstance(v, list):
+                res += len(v)
+        return res
