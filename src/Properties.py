@@ -95,7 +95,7 @@ class Normal(Property):
         return "%s %s %s" % (self, comparer, value)
 
 
-class Htons(Property):
+class HtonsProperty(Property):
     """
     Class to model a property where the bytes of the property value should be reversed before comparison.
     """
@@ -106,7 +106,7 @@ class Htons(Property):
         if shift == -1:
             return "htons(%s) %s %s" % (self, comparer, value)
         else:
-            return "htons(%s) >> %s %s %s" % (self, shift, comparer, value >> shift)
+            return "htons(%s) >> %s %s %s" % (self, shift, comparer, int(value) >> shift)
 
 
 class MAC(Property):
