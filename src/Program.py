@@ -1,8 +1,11 @@
+from time import sleep
+
 from bcc import BPF
 
-import Protocols
 import Rules
 import Util
+from Fingerprints import Fingerprint
+from Protocols import TCP, UDP, IPv4, Ethernet
 from RuleParsing import RuleParser
 
 
@@ -14,25 +17,45 @@ class Program:
     Device = "enp0s25"
     Function = 'xdp_filter'
     Template = Util.file_str('templates/program.c')
-    OutputFolder = 'code/'
+    FingerprintFolder = 'fingerprints/'
+    OutputFolder = 'programs/'
+    SaveFolder = 'results/'
     MaxPropCount = 10000
     AttackMarker = '10'
     NormalMarker = '20'
 
-    def __init__(self, code, name=None, func=Function, dev=Device):
+    def __init__(self, fingerprint, name=None, func=Function, dev=Device):
         """
         Initializes a program
 
-        :param code: Code of the program
+        :param fingerprint: fingerprint of the program
         :param name: Optional. Name or identifier of the program
         :param func: Optional. Function name of the program
         :param dev: Optional. Device the program should run on
         """
         self.name = name
-        self.__code = code
+        self.__fingerprint = fingerprint
+        self.__code = Program.generate_code(RuleParser.parse(fingerprint))
+
+        # Find protocol
+        protocol = fingerprint['protocol']
+        if protocol == 'TCP':
+            p = TCP
+        elif protocol == 'UDP':
+            p = UDP
+        else:
+            raise AssertionError('Protocol not yet supported by Program.generate()')
+
+        # Parse sizes
+        self.__src_ips = Fingerprint.prop_size(fingerprint[IPv4['src']])
+        self.__src_ports = Fingerprint.prop_size(fingerprint[p['src']])
+        self.__dst_ports = Fingerprint.prop_size(fingerprint[p['dst']])
         self.__bpf = None
         self.__func = func
         self.__dev = dev
+
+    def __str__(self):
+        return self.__code
 
     def start(self):
         """
@@ -66,6 +89,58 @@ class Program:
 
             return result
 
+    def test_run(self, time, save=False, return_csv_data=False):
+        """
+        Activates the program for <time> seconds
+        :param time: Time to activate in seconds
+        :param save: Whether to save the test result
+        :param return_csv_data: If true, this will return the CSV data instead of the result data
+        :return: Test results
+        """
+        try:
+            self.start()
+            sleep(time)
+        finally:
+            result = self.stop()
+
+            if save:
+                self.save_test_run(result)
+            if return_csv_data:
+                return self.csv_data(result)
+            return result
+
+    def csv_data(self, results):
+        """
+        Returns the CSV data for a set of results
+
+        :param results: Results of a run
+        :return:
+        """
+        return [
+            self.name,
+            self.__fingerprint['protocol'],
+            self.__src_ips,
+            self.__src_ports,
+            self.__dst_ports,
+            results['TP'],
+            results['FP'],
+            results['UP'],
+            results['TN'],
+            results['FN'],
+            results['UN']
+        ]
+
+    def save_test_run(self, results):
+        """
+        Saves the result of the test run to a CSV
+
+        :param results: Results of a run
+        """
+        data = self.csv_data(results)
+
+        with open(Program.SaveFolder + self.name + '.csv', 'w') as file:
+            file.write(','.join([str(d) for d in data]))
+
     def save(self, folder=None):
         """
         Saves the program to the file <name>.c
@@ -79,19 +154,19 @@ class Program:
             file.write(self.__code)
 
     @staticmethod
-    def load(name, folder=None):
+    def load(f_name, folder=None):
         """
-        Loads a program from a file
+        Loads a program from a fingerprint
 
-        :param name: Name of the file (excluding .c)
+        :param f_name: Name of the fingerprint (excluding .json)
         :param folder: Specified folder or Program.OutputFolder
         :return: Loaded program
         """
         if folder is None:
-            folder = Program.OutputFolder
+            folder = Program.FingerprintFolder
 
-        code = Util.file_str(folder + name + '.c')
-        return Program(code, name)
+        f = Fingerprint.parse(folder + f_name + '.json')
+        return Program.generate(f, f_name)
 
     @staticmethod
     def secure_div(a, b):
@@ -126,11 +201,11 @@ class Program:
             npv = Program.secure_div(analysis['TN'], analysis['TN'] + analysis['FN'])
             accuracy = Program.secure_div(analysis['TP'] + analysis['TN'], classified_packets)
 
-            table_line = '%-10s | %-10s | %-10s | %-10s'
+            table_line = '%-20s | %-20s | %-20s | %-20s'
 
             print()
             print(table_line % ('', 'Attack', 'Normal', 'Predictive value'))
-            print(table_line % ('-' * 10, '-' * 10, '-' * 10, '-' * 10))
+            print(table_line % ('-' * 20, '-' * 20, '-' * 20, '-' * 20))
             print(table_line % ('Dropped', analysis['TP'], analysis['FP'], ppv))
             print(table_line % ('Passed', analysis['FN'], analysis['TN'], npv))
             print(table_line % ('True rate', tpr, tnr, ''))
@@ -143,9 +218,6 @@ class Program:
             print(table_line % (analysis['TP'], analysis['FP'], analysis['UP']))
             print(table_line % (analysis['FN'], analysis['TN'], analysis['UN']))
 
-    def __str__(self):
-        return self.__code
-
     @staticmethod
     def generate(fingerprint, name='unknown'):
         """
@@ -155,8 +227,7 @@ class Program:
         :param name: Optional. Name of the program.
         :return: New program
         """
-        code = Program.generate_code(RuleParser.parse(fingerprint))
-        return Program(code, name)
+        return Program(fingerprint, name)
 
     @staticmethod
     def __get_functions(rules: [Rules.Rule]):
@@ -310,7 +381,7 @@ class Program:
 
                     # Make sure that only matching lower protocols are matched
                     and_clause = ''
-                    if p.osi - 1 > Protocols.Ethernet.osi:
+                    if p.osi - 1 > Ethernet.osi:
                         and_clause = ' && (' + ' || '.join(
                             ['proto%s == %s' % (p.osi - 1, dep.protocol_id) for dep in p.lower_protocols]) + ")"
 

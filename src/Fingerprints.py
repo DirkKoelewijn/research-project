@@ -47,6 +47,7 @@ class Fingerprint:
         :return: Fingerprint containing default properties
         """
         return {
+            'protocol': str(data['protocol']).upper(),
             src_ip: sorted(data['src_ips']),
             src_port: sorted([int(d) for d in data['src_ports']]),
             dst_port: sorted([int(d) for d in data['dst_ports']]),
@@ -91,9 +92,19 @@ class Fingerprint:
         :return: Expected size as rule
         """
         res = 0
-        for k, v in fingerprint.items():
-            if isinstance(v, list):
-                res += len(v)
-            else:
-                res += 1
+        for v in fingerprint.values():
+            res += Fingerprint.prop_size(v)
         return res
+
+    @staticmethod
+    def prop_size(values):
+        """
+        Returns the expected size of all values of a property (when parsed to a rule)
+
+        :param values: List of values (single values or min-max tuples)
+        :return: Amount of single values plus twice the amount of min-max tuples
+        """
+        if isinstance(values, list):
+            return sum([(2 if isinstance(v, tuple) else 1) for v in values])
+        else:
+            return 1
