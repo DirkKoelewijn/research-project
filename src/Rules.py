@@ -164,7 +164,10 @@ class Rule:
         # Enforce brackets around condition
         condition = self.condition() if self.condition().startswith('(') else '(%s)' % self.condition()
 
-        return Rule.Template % (self.initial_condition(), self.comment(), condition)
+        if len(self) < 25:
+            return Rule.Template % (self.initial_condition(), self.comment(), condition)
+        else:
+            return Rule.Template % (self.initial_condition(), '', condition)
 
     def comment(self):
         """

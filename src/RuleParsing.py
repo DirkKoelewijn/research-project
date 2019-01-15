@@ -19,6 +19,9 @@ class RuleParser:
         """
         rules = []
         for prop, values in fingerprint.items():
+            if prop is 'protocol':
+                continue
+
             prop_rules = []
 
             if isinstance(values, list):
