@@ -162,3 +162,4 @@ venv.bak/
 !/rulegeneration/code/bpf-loader.py
 /src/fingerprints/
 !/src/fingerprints/README.md
+/src/pcaps/
