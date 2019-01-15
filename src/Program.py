@@ -14,7 +14,7 @@ class Program:
     Device = "enp0s25"
     Function = 'xdp_filter'
     Template = Util.file_str('templates/program.c')
-    OutputFolder = 'code/'
+    OutputFolder = 'programs/'
     MaxPropCount = 10000
     AttackMarker = '10'
     NormalMarker = '20'
