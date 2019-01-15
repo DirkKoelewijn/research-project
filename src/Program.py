@@ -1,17 +1,116 @@
+from bcc import BPF
+
 import Protocols
 import Rules
 import Util
+from RuleParsing import RuleParser
 
 
 class Program:
     """
     Class to generate BPF programs from conditions
     """
+
+    Device = "enp0s25"
+    Function = 'xdp_filter'
     Template = Util.file_str('templates/program.c')
     OutputFolder = 'code/'
     MaxPropCount = 10000
     AttackMarker = '10'
     NormalMarker = '20'
+
+    def __init__(self, code, name=None, func=Function, dev=Device):
+        self.name = name
+        self.__code = code
+        self.__bpf = None
+        self.__func = func
+        self.__dev = dev
+
+    def start(self):
+        self.__bpf = BPF(text=self.__code)
+        fn = self.__bpf.load_func(self.__func, BPF.XDP)
+        self.__bpf.attach_xdp(self.__dev, fn, 0)
+
+    def stop(self, include_result=True):
+        self.__bpf.remove_xdp(self.__dev, 0)
+
+        if include_result:
+            result = {'TP': 0, 'TN': 0, 'FP': 0, 'FN': 0, 'UP': 0, 'UN': 0}
+            keywords = dict([('$%s$' % k, k) for k in result.keys()])
+
+            while True:
+                line = str(self.__bpf.trace_readline(nonblocking=True))
+                for k in keywords:
+                    if k in line:
+                        result[keywords[k]] += 1
+                        continue
+                if line == 'b\'\'':
+                    break
+
+            return result
+
+    def save(self, folder=None):
+        if folder is None:
+            folder = Program.OutputFolder
+
+        with open(folder + self.name + '.c', 'w') as file:
+            file.write(self.__code)
+
+    @staticmethod
+    def load(name, folder=None):
+        if folder is None:
+            folder = Program.OutputFolder
+
+        code = Util.file_str(folder + name + '.c')
+        return Program(code, name)
+
+    @staticmethod
+    def secure_div(a, b):
+        try:
+            return a / b
+        except ZeroDivisionError:
+            return '-'
+
+    @staticmethod
+    def print_analysis(analysis: dict, simple=False):
+        if not simple:
+            print('\n--- ANALYSIS RESULTS ---\n')
+            all_packets = sum(analysis.values())
+            print('Packets captured:', all_packets)
+            classified_packets = sum([v for k, v in analysis.items() if not k.startswith('U')])
+            print('of which classified:', classified_packets)
+
+            tpr = Program.secure_div(analysis['TP'], analysis['TP'] + analysis['FN'])
+            tnr = Program.secure_div(analysis['TN'], analysis['TN'] + analysis['FP'])
+            ppv = Program.secure_div(analysis['TP'], analysis['TP'] + analysis['FP'])
+            npv = Program.secure_div(analysis['TN'], analysis['TN'] + analysis['FN'])
+            accuracy = Program.secure_div(analysis['TP'] + analysis['TN'], classified_packets)
+
+            table_line = '%-10s | %-10s | %-10s | %-10s'
+
+            print()
+            print(table_line % ('', 'Attack', 'Normal', 'Predictive value'))
+            print(table_line % ('-' * 10, '-' * 10, '-' * 10, '-' * 10))
+            print(table_line % ('Dropped', analysis['TP'], analysis['FP'], ppv))
+            print(table_line % ('Passed', analysis['FN'], analysis['TN'], npv))
+            print(table_line % ('True rate', tpr, tnr, ''))
+            print()
+
+            print('Accuracy: ', accuracy)
+            print('\n--- END OF ANALYSIS ---\n')
+
+        else:
+            table_line = '%-10d %-10d %-10d'
+            print(table_line % (analysis['TP'], analysis['FP'], analysis['UP']))
+            print(table_line % (analysis['FN'], analysis['TN'], analysis['UN']))
+
+    def __str__(self):
+        return self.__code
+
+    @staticmethod
+    def generate(fingerprint, name='unknown'):
+        code = Program.generate_code(RuleParser.parse(fingerprint))
+        return Program(code, name)
 
     @staticmethod
     def __get_functions(rules: [Rules.Rule]):
@@ -47,7 +146,7 @@ class Program:
         return res
 
     @staticmethod
-    def generate(*rules: Rules.Rule, file: str = None, blacklist=True):
+    def generate_code(*rules: Rules.Rule, file: str = None, blacklist=True):
         """
         Generates a BPF program from a list of conditions.
 
@@ -58,7 +157,7 @@ class Program:
         :param file: File to save the code to
         :param rules: List of rules
         :param blacklist: Whether to use blacklisting (Defaults to true)
-        :return: Full R code of BPF program
+        :return: Full C code of BPF program
         """
         # Check property count
         prop_count = sum([len(r) for r in rules])

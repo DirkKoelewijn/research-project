@@ -5,7 +5,7 @@
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/bpf examples" />
     </content>
-    <orderEntry type="jdk" jdkName="Python 3.6 (research-project)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.6 (research-project) (2)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
   <component name="TestRunnerService">
