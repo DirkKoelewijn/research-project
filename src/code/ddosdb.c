@@ -44,11 +44,17 @@ int xdp_filter(struct xdp_md *ctx) {
     if (ip != NULL){
         // Condition: IPv4[src] == 104.28.22.236/16
         if (htonl(ip->saddr) >> 16 == 26652) {
-            bpf_trace_printk("$TP$\n");
+            // Analyze blocking result
+            if (ip->ttl == 10)
+                bpf_trace_printk("$TP$\n");
+            else
+                bpf_trace_printk("$TP$\n");
             return XDP_DROP;
         }
+        if (ip->ttl == 10)
+            bpf_trace_printk("$FN$\n");
+        else
+            bpf_trace_printk("$TN$\n");
     }
-
-    bpf_trace_printk("$TN$\n");
     return XDP_PASS;
 }

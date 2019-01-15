@@ -10,6 +10,8 @@ class Program:
     Template = Util.file_str('templates/program.c')
     OutputFolder = 'code/'
     MaxPropCount = 10000
+    AttackMarker = '10'
+    NormalMarker = '20'
 
     @staticmethod
     def __get_functions(rules: [Rules.Rule]):
@@ -68,6 +70,8 @@ class Program:
         # Extract dependencies from rules
         dependencies = Program.__get_dependencies(rules)
 
+        # TODO Check for mandatory IPv4 presence
+
         # Generate code template based on dependencies
         result = Program.__generate_template(dependencies)
 
@@ -83,6 +87,9 @@ class Program:
         # Replace match markers with correct value
         result = result.replace('$NO_MATCH', 'XDP_PASS' if blacklist else 'XDP_DROP').replace(
             '$MATCH', 'XDP_DROP' if blacklist else 'XDP_PASS')
+
+        # Replace attack and normal traffic markers with correct values
+        result = result.replace('$ATTACK_MARKER', Program.AttackMarker).replace('$NORMAL_MARKER', Program.NormalMarker)
 
         # Output if requested
         if file is not None:
