@@ -1,4 +1,4 @@
 if (%s){
     // Condition: %s
-    if %s return $MATCH;
+    if %s goto Match;
 }

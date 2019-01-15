@@ -19,4 +19,4 @@ rule2 = Rule.all(
 )
 
 # Generate program
-Program.generate(rule1, rule2, file='test.c')
+Program.generate_code(rule1, rule2, file='test.c')
