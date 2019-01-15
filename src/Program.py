@@ -9,7 +9,7 @@ class Program:
     """
     Template = Util.file_str('templates/program.c')
     OutputFolder = 'code/'
-    MaxPropCount = 500
+    MaxPropCount = 10000
 
     @staticmethod
     def __get_functions(rules: [Rules.Rule]):

@@ -55,6 +55,22 @@ class Property(ABC):
     def __gt__(self, other):
         return Condition(self, '>', other)
 
+    @staticmethod
+    def parse_shift(value):
+        """
+        Retrieves the shift for a given value
+
+        :param value: Value (format: VALUE/SHIFT)
+        :return: Tuple of (value, shift)
+        """
+        shift = -1
+        if '/' in value:
+            i = value.index('/')
+            shift = 32 - int(value[i + 1:])
+            value = value[:i]
+
+        return shift, value
+
 
 class Singular(Property):
     """
@@ -79,13 +95,18 @@ class Normal(Property):
         return "%s %s %s" % (self, comparer, value)
 
 
-class Htons(Property):
+class HtonsProperty(Property):
     """
     Class to model a property where the bytes of the property value should be reversed before comparison.
     """
 
     def compare_code(self, comparer, value: str):
-        return "htons(%s) %s %s" % (self, comparer, value)
+        shift, value = Property.parse_shift(value)
+
+        if shift == -1:
+            return "htons(%s) %s %s" % (self, comparer, value)
+        else:
+            return "htons(%s) >> %s %s %s" % (self, shift, comparer, int(value) >> shift)
 
 
 class MAC(Property):
@@ -106,8 +127,14 @@ class IpProperty(Property):
     """
 
     def compare_code(self, comparer, value: str):
+        shift, value = Property.parse_shift(value)
+
         val = 0
-        for v in reversed(value.split('.')):
+        for v in value.split('.'):
             val = val << 8
             val += int(v)
-        return "%s %s %s" % (self, comparer, val)
+
+        if shift <= 0:
+            return "htonl(%s) %s %s" % (self, comparer, val)
+        else:
+            return "htonl(%s) >> %s %s %s" % (self, shift, comparer, val >> shift)

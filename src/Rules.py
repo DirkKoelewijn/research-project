@@ -82,26 +82,6 @@ class Rule:
             split = len(all_items) // 2
             return Rule.one(*all_items[:split]) | Rule.one(*all_items[split:])
 
-    @staticmethod
-    def parse(*tuples: tuple, use_or=False):
-        """
-        Parse a rule from tuples containing left, right and comparator part
-
-        :param tuples: Rule tuples
-        :param use_or: To use and when combining rules. Will use or if false.
-        :return: Parsed condition
-        """
-        if len(tuples) == 0:
-            raise AssertionError('Supply at least one rule')
-
-        rules = [Rule(*t) for t in tuples]
-
-        result = rules[0]
-        for r in rules[1:]:
-            result = result | r if use_or else result & r
-
-        return result
-
     def __and__(self, other):
         return Rule(self, '&&', other)
 
