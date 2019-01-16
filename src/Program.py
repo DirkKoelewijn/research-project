@@ -1,4 +1,4 @@
-from time import sleep
+from time import time
 
 from bcc import BPF
 
@@ -65,43 +65,47 @@ class Program:
         fn = self.__bpf.load_func(self.__func, BPF.XDP)
         self.__bpf.attach_xdp(self.__dev, fn, 0)
 
-    def stop(self, include_result=True):
+    def stop(self):
         """
-        Stops (detaches) a running BPF program from the kernel and returns the results
-
-        :param include_result: Whether the results should be returned (True by default)
-        :return: Results as a dictionary of TP, TN, FP, FN, UP, UN. (Latter two are Unknown Positive/Negative)
+        Stops (detaches) a running BPF program from the kernel
         """
         self.__bpf.remove_xdp(self.__dev, 0)
 
-        if include_result:
-            result = {'TP': 0, 'TN': 0, 'FP': 0, 'FN': 0, 'UP': 0, 'UN': 0}
-            keywords = dict([('$%s$' % k, k) for k in result.keys()])
-
-            while True:
-                line = str(self.__bpf.trace_readline(nonblocking=True))
-                for k in keywords:
-                    if k in line:
-                        result[keywords[k]] += 1
-                        continue
-                if line == 'b\'\'':
-                    break
-
-            return result
-
-    def test_run(self, time, save=False, return_csv_data=False):
+    def test_run(self, t, save=False, return_csv_data=False, verbose=True):
         """
         Activates the program for <time> seconds
-        :param time: Time to activate in seconds
+        :param verbose: Whether to print output
+        :param t: Time to activate in seconds
         :param save: Whether to save the test result
         :param return_csv_data: If true, this will return the CSV data instead of the result data
         :return: Test results
         """
+        result = {'TP': 0, 'TN': 0, 'FP': 0, 'FN': 0, 'UP': 0, 'UN': 0, 'INV': 0}
+
         try:
+            if verbose:
+                print('Loading program', flush=True)
             self.start()
-            sleep(time)
+            if verbose:
+                print('Attached program', flush=True)
+
+            # Measure
+            keywords = dict([('$%s$' % k, k) for k in result.keys()])
+
+            start = time()
+            while time() - start < t:
+                line = str(self.__bpf.trace_readline(nonblocking=True))
+                if line == 'b\'\'':
+                    continue
+                for k in keywords:
+                    if k in line:
+                        result[keywords[k]] += 1
+                        continue
+
         finally:
-            result = self.stop()
+            self.stop()
+            if verbose:
+                print('Detached program', flush=True)
 
             if save:
                 self.save_test_run(result)
@@ -190,10 +194,16 @@ class Program:
         """
         if not simple:
             print('\n--- ANALYSIS RESULTS ---\n')
+            info_line = '%-20s : %-10d'
             all_packets = sum(analysis.values())
-            print('Packets captured:', all_packets)
-            classified_packets = sum([v for k, v in analysis.items() if not k.startswith('U')])
-            print('of which classified:', classified_packets)
+            print(info_line % ('Packets captured:', all_packets))
+            classified_packets = sum([v for k, v in analysis.items() if not k.startswith('U') and k is not 'INV'])
+            print(info_line % ('  classified:', classified_packets))
+            invalid_packets = analysis['INV']
+            print(info_line % ('  unclassified:', all_packets - classified_packets - invalid_packets))
+            print(info_line % ('  other destination*', invalid_packets))
+            print('\n* some attack captures contain non-attack data. '
+                  'This non-attack data has an external IP address and is dropped on receival.')
 
             tpr = Program.secure_div(analysis['TP'], analysis['TP'] + analysis['FN'])
             tnr = Program.secure_div(analysis['TN'], analysis['TN'] + analysis['FP'])
