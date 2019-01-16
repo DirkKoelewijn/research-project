@@ -19,7 +19,10 @@ int xdp_filter(struct xdp_md *ctx) {
     if (ip != NULL){
         // Drop all packets not to self
         // Condition: IPv4[dst] != 192.168.0.0/16
-        if (htonl(ip->daddr) >> 16 != 49320) return $MATCH;
+        if (htonl(ip->daddr) >> 16 != 49320) {
+            bpf_trace_printk("$INV$\n");
+            return $MATCH;
+        }
     }
     $RULES
 
