@@ -164,3 +164,4 @@ venv.bak/
 !/src/fingerprints/README.md
 /src/pcaps/
 !/src/pcaps/autorewrite.sh
+!/src/pcaps/attack.sh
