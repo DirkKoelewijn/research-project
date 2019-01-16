@@ -1,11 +1,13 @@
 import subprocess
+from time import sleep
 
 import ddosdb
 from Communication import Communicator
 
 
 class Attacker(Communicator):
-    WAIT = 3
+    INTERN_WAIT = 3
+    EXTERN_WAIT = INTERN_WAIT + 2
     NORMAL_DATA = 'rw_bigflows'
 
     def __init__(self, ddosdb_user, ddosdb_pass, host, port, other_host, other_port):
@@ -21,23 +23,23 @@ class Attacker(Communicator):
             self.download_pcap(parts[1])
             self.send(data + ' OK')
         elif parts[0] == 'RUN':
+            self.send(data + (' IN %s SECONDS' % Attacker.EXTERN_WAIT))
             self.run_pcap(parts[1], parts[2])
-            self.send(data + ' IN 1 SECOND')
+            return False
         else:
-            self.send('BOGUS')
+            print('Invalid message:', data)
 
         return True
 
     def download_pcap(self, name):
-        print('Downloading')
         s = ddosdb.login(self.user, self.password)
         ddosdb.download_pcap(s, name)
-        print('Rewriting')
         self.rewrite(name, 10)
-        print('Done')
 
     def run_pcap(self, name, seconds):
-        print('Running %s.pcap in %s seconds' % (name, seconds))
+        sleep(Attacker.INTERN_WAIT)
+        a = 'rw_%s' % name
+        self.attack(a, Attacker.NORMAL_DATA, seconds)
 
     @staticmethod
     def rewrite(name, ttl):

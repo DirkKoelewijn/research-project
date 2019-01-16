@@ -11,14 +11,12 @@ class Defender(Communicator):
         parts = data.split(' ')
         if parts[0] == 'DOWNLOAD' and parts[-1] == 'OK':
             sleep(1)  # Wait until downloads are done
-            self.send(data.replace('DOWNLOAD', 'RUN').replace('OK', '30'))
-        elif parts[0] == 'RUN' and parts[-1] == 'SECOND':
+            self.send(data.replace('DOWNLOAD', 'RUN').replace('OK', '10'))
+        elif parts[0] == 'RUN' and parts[-1] == 'SECONDS':
             run_defense(parts[1], parts[2], parts[4])
-            self.send('exit')
             return False
         else:
-            self.send('BOGUS')
-
+            print('Invalid message:', data)
         return True
 
 
