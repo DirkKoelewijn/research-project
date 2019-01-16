@@ -33,10 +33,10 @@ other_mac="-"
 
 while read line
 do
-	other_ip=$(echo $line | awk '{print $1}')
+	other_ip=$(echo ${line} | awk '{print $1}')
 	if [[ "$other_ip" != "$router_ip" ]]
 	then
-		other_mac=$(echo $line | awk '{print $3}')
+		other_mac=$(echo ${line} | awk '{print $3}')
 		break
 	fi
 done <<< $(arp -n | grep 192.168 | cat)
