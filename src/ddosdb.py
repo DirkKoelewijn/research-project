@@ -16,10 +16,12 @@ def login(u, p):
     token = re.search('name="csrfmiddlewaretoken".*?value="(.+?)"', login_page.content.decode('utf-8'))
     if token is not None:
         token = token.group(1)
-        s.post('https://ddosdb.org/login', headers={'referer': 'https://ddosdb.org/login'},
-               data={'username': u, 'password': p, 'csrfmiddlewaretoken': token})
+        resp = s.post('https://ddosdb.org/login', headers={'referer': 'https://ddosdb.org/login'},
+                      data={'username': u, 'password': p, 'csrfmiddlewaretoken': token})
+        if 'Invalid password' in resp.content.decode('utf-8'):
+            raise AssertionError("Username or password incorrect")
     else:
-        raise AssertionError
+        raise AssertionError("Could not find token on page")
     return s
 
 
