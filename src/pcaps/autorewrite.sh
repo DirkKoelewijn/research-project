@@ -19,6 +19,9 @@ output_prefix="rw_"	    # Prefix for rewritten file names
 # Echo with sudo to force permissions
 sudo echo "Rewriting '$1' to be send with $2 as TTL"
 
+folder=$(dirname "$1")
+file=$(basename "$1")
+
 
 # Get own IP and MAC address
 ip=$(ifconfig ${interface} | grep inet | grep -v inet6| awk '{print $2}')
@@ -44,7 +47,7 @@ done <<< $(arp -n | grep 192.168 | cat)
 echo "  to:   $other_ip ($other_mac)"
 
 # Construct new file name and rewrite command
-new_f="$output_prefix$1"
+new_f="$folder/$output_prefix$file"
 cmd="tcprewrite -i $1 -o $new_f -N $replace_ip:$other_ip --enet-dmac=$other_mac --enet-smac=$mac --ttl=$2"
 
 #Execute
