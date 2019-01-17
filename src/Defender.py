@@ -44,11 +44,29 @@ class Defender(Communicator):
         return self.__result
 
 
+class DefenderFactory:
+    def __init__(self, ip, port, other_ip, other_port=None):
+        self.ip = ip
+        self.port = port
+        self.other_ip = other_ip
+        if other_port is None:
+            other_port = port
+        self.other_port = other_port
+
+    def launch(self, fingerprint):
+        d = Defender(fingerprint, self.ip, self.port, self.other_ip, self.other_port)
+        d.start()
+        return d
+
+
 if __name__ == '__main__':
-    f = '2ea180355c6612d69993431075783e86'
-    port = 1025
-    defender = Defender(f, '192.168.1.145', port, '192.168.1.148', port)
-    defender.start()
-    print('started')
-    defender.join()
-    print(defender.result())
+    factory = DefenderFactory('192.168.1.145', 1025, '192.168.1.148')
+    fingerprints = ['2ea180355c6612d69993431075783e86', '1a2e433cfed7bde38732f0892fbbff27']
+    defender = None
+    for f in fingerprints:
+        defender = factory.launch(f)
+        defender.join()
+        print(defender.result())
+
+    if defender is not None:
+        defender.send_exit()
