@@ -6,8 +6,10 @@ from Util import file_str
 
 class Fingerprint:
     """
-    Class for parsing fingerprint files into fingerprint dicts (format: {Property: [values]})
+    Class for parsing fingerprint all_files into fingerprint dicts (format: {Property: [values]})
     """
+    TCP_FLAG_KEY = 'TCP_FLAG'
+
     __tcp_flags = {
         'F': TCP['fin'],
         'S': TCP['syn'],
@@ -79,9 +81,7 @@ class Fingerprint:
         # Get TCP flag
         flags = data['additional']['tcp_flag']
 
-        for k, v in Fingerprint.__tcp_flags.items():
-            if k in flags:
-                result[v] = 1
+        result[Fingerprint.TCP_FLAG_KEY] = [v for k, v in Fingerprint.__tcp_flags.items() if k in flags]
 
         return result
 
