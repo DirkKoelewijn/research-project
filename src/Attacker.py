@@ -15,7 +15,6 @@ class Attacker(Communicator):
         self.user = ddosdb_user
         self.password = ddosdb_pass
 
-    @staticmethod
     def handle_request(self, data):
         print('%-10s IN : %s' % (self.name, data))
         parts = data.split(' ')

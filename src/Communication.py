@@ -48,14 +48,13 @@ class Communicator(threading.Thread, ABC):
         sock.bind((self.host, self.port))
         sock.listen(10)
         try:
-            while self.handle_client(self, sock.accept()):
+            while self.handle_client(sock.accept()):
                 pass
         finally:
             print('Shutting down %s' % self.name)
             sock.shutdown(socket.SHUT_RDWR)
             sock.close()
 
-    @staticmethod
     def handle_client(self, accept):
         """
         Handles a connection with a client
@@ -75,7 +74,7 @@ class Communicator(threading.Thread, ABC):
                     if data == EXIT:
                         cont = False
                     else:
-                        cont = self.handle_request(self, data)
+                        cont = self.handle_request(data)
                     break
         except AssertionError as error:
             print('EXCEPTION:', str(error))
@@ -86,7 +85,6 @@ class Communicator(threading.Thread, ABC):
             connection.close()
             return cont
 
-    @staticmethod
     @abstractmethod
     def handle_request(self, data: str) -> bool:
         raise NotImplementedError
