@@ -24,7 +24,6 @@ class Attacker(Communicator):
         elif parts[0] == 'RUN':
             self.send(data + (' IN %s SECONDS' % Attacker.EXTERN_WAIT))
             self.run_pcap(parts[1], parts[2])
-            return False
         else:
             print('Invalid message:', data)
 
