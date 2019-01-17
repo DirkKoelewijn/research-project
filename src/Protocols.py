@@ -67,7 +67,7 @@ class Protocol:
             .replace("$STRUCT_NAME", self.struct_name)
 
         if self.__return:
-            result = result.replace("$NO_DATA", "return $NO_MATCH")
+            result = result.replace("$NO_DATA", "return $NO_MATCH$")
         else:
             result = result.replace("$NO_DATA", "goto Rules")
 
