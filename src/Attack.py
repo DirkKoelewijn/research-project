@@ -1,7 +1,4 @@
-from time import sleep
-
 from Attacker import Attacker
-from Defender import Defender
 
 if __name__ == '__main__':
     port1 = 2000

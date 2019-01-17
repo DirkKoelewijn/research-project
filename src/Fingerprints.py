@@ -34,6 +34,8 @@ class Fingerprint:
             return Fingerprint.parse_udp(data)
         elif protocol == 'TCP':
             return Fingerprint.parse_tcp(data)
+        else:
+            raise AssertionError("Unsupported protocol!")
 
     @staticmethod
     def parse_default(data, src_ip, src_port, dst_port):

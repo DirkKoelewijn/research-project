@@ -60,6 +60,7 @@ class Program:
     def start(self):
         """
         Compiles the BPF program and attaches it to the kernel
+        Can only be used when python has sudo permission
         """
         self.__bpf = BPF(text=self.__code)
         fn = self.__bpf.load_func(self.__func, BPF.XDP)
@@ -407,3 +408,8 @@ class Program:
 
         # Return the result with the $CODE marker
         return result.replace("$CODE", "")
+
+
+if __name__ == '__main__':
+    program = Program.load('1a2e433cfed7bde38732f0892fbbff27')
+    print(program.test_run(5))
