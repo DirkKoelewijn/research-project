@@ -30,8 +30,7 @@ class Attacker(Communicator):
         return True
 
     def download_pcap(self, name):
-        s = ddosdb.login(self.user, self.password)
-        ddosdb.download_pcap(s, name)
+        ddosdb.download_pcap(self.user, self.password, name, True)
         self.rewrite(name, 10)
 
     def run_pcap(self, name, seconds):
