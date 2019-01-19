@@ -1,7 +1,7 @@
 #define KBUILD_MODNAME "module"
-$INCLUDES
+$INCLUDES$
 
-$FUNCTIONS
+$FUNCTIONS$
 
 int xdp_filter(struct xdp_md *ctx) {
     // Load pointers to data and end of data
@@ -13,36 +13,34 @@ int xdp_filter(struct xdp_md *ctx) {
     uint64_t offset = 0;
 
     // Structs of headers used in rules
-    $STRUCTS
-    $CODE
+    $STRUCTS$
+    $CODE$
     Rules:
     if (ip != NULL){
         // Drop all packets not to self
         // Condition: IPv4[dst] != 192.168.0.0/16
         if (htonl(ip->daddr) >> 16 != 49320) {
             bpf_trace_printk("$INV$\n");
-            return $MATCH;
+            return $MATCH$;
         }
     }
-    $RULES
+    uint64_t matched = 0;
+    $RULES$
+
+     // Match
+    if (ip != NULL && matched >= $MATCHED$){
+        if (ip->ttl == $ATTACK_MARKER$) bpf_trace_printk("$TP$\n");
+        else if (ip->ttl == $NORMAL_MARKER$) bpf_trace_printk("$FP$\n");
+        else bpf_trace_printk("$UP$\n");
+
+        return $MATCH$;
+    }
 
     // No match
     if (ip != NULL) {
-        if (ip->ttl == $ATTACK_MARKER) bpf_trace_printk("$FN$\n");
-        else if (ip->ttl == $NORMAL_MARKER) bpf_trace_printk("$TN$\n");
+        if (ip->ttl == $ATTACK_MARKER$) bpf_trace_printk("$FN$\n");
+        else if (ip->ttl == $NORMAL_MARKER$) bpf_trace_printk("$TN$\n");
         else bpf_trace_printk("$UN$\n");
     }
-    return $NO_MATCH;
-
-    // Match
-    Match:
-    if (ip != NULL){
-        if (ip->ttl == $ATTACK_MARKER) bpf_trace_printk("$TP$\n");
-        else if (ip->ttl == $NORMAL_MARKER) bpf_trace_printk("$FP$\n");
-        else bpf_trace_printk("$UP$\n");
-    }
-    return $MATCH;
-
-    bpf_trace_printk("$UN$\n");
-    return $NO_MATCH;
+    return $NO_MATCH$;
 }

@@ -40,6 +40,9 @@ class Communicator(threading.Thread, ABC):
         s.shutdown(2)
         s.close()
 
+    def send_exit(self):
+        self.send(EXIT)
+
     def run(self):
         """
         Starts listening for requests
