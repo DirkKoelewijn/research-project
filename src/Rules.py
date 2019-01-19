@@ -1,6 +1,7 @@
 import Properties
 import Util
 from Conditions import Condition
+from Protocols import IPv4
 
 
 class Rule:
@@ -115,7 +116,7 @@ class Rule:
         :return: Required protocols
         """
         if self.end_node:
-            return {self.left.proto}
+            return {self.left.proto, IPv4}
         else:
             # noinspection PyUnresolvedReferences
             return self.left.requirements() | self.right.requirements()

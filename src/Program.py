@@ -24,7 +24,7 @@ class Program:
     AttackMarker = '10'
     NormalMarker = '20'
 
-    def __init__(self, fingerprint, name=None, func=Function, dev=Device):
+    def __init__(self, fingerprint, name=None, match_all_but=0, func=Function, dev=Device):
         """
         Initializes a program
 
@@ -35,7 +35,10 @@ class Program:
         """
         self.name = name
         self.__fingerprint = fingerprint
-        self.__code = Program.generate_code(RuleParser.parse(fingerprint))
+        if match_all_but <= 0:
+            self.__code = Program.generate_code(RuleParser.parse(fingerprint), match_all_but=0)
+        else:
+            self.__code = Program.generate_code(*RuleParser.parse(fingerprint, False), match_all_but=match_all_but)
 
         # Find protocol
         protocol = fingerprint['protocol']
@@ -159,19 +162,20 @@ class Program:
             file.write(self.__code)
 
     @staticmethod
-    def load(f_name, folder=None):
+    def load(f_name, folder=None, match_all_but=0):
         """
         Loads a program from a fingerprint
 
         :param f_name: Name of the fingerprint (excluding .json)
         :param folder: Specified folder or Program.OutputFolder
+        :param match_all_but: Match all but X rules to drop
         :return: Loaded program
         """
         if folder is None:
             folder = Program.FingerprintFolder
 
         f = Fingerprint.parse(folder + f_name + '.json')
-        return Program.generate(f, f_name)
+        return Program.generate(f, f_name, match_all_but=match_all_but)
 
     @staticmethod
     def secure_div(a, b):
@@ -230,15 +234,16 @@ class Program:
             print(table_line % (analysis['FN'], analysis['TN'], analysis['UN']))
 
     @staticmethod
-    def generate(fingerprint, name='unknown'):
+    def generate(fingerprint, name='unknown', match_all_but=0):
         """
         Generates a program from a fingerprint
 
+        :param match_all_but: Match all but X rules to drop
         :param fingerprint: Fingerprint
         :param name: Optional. Name of the program.
         :return: New program
         """
-        return Program(fingerprint, name)
+        return Program(fingerprint, name, match_all_but=match_all_but)
 
     @staticmethod
     def __get_functions(rules: [Rules.Rule]):
@@ -274,7 +279,7 @@ class Program:
         return res
 
     @staticmethod
-    def generate_code(*rules: Rules.Rule, file: str = None, blacklist=True):
+    def generate_code(*rules: Rules.Rule, file: str = None, match_all_but=0, blacklist=True):
         """
         Generates a BPF program from a list of conditions.
 
@@ -305,18 +310,22 @@ class Program:
         # Get and insert functions
         functions = Program.__get_functions(rules)
         func_code = '\n'.join([str(func) for func in functions])
-        result = Util.code_insert(result, '$FUNCTIONS', func_code, True)
+        result = Util.code_insert(result, '$FUNCTIONS$', func_code, True)
 
         # Generate and insert condition code
         rule_code = '\n'.join([r.code() for r in rules])
-        result = Util.code_insert(result, '$RULES', rule_code, True)
+        result = Util.code_insert(result, '$RULES$', rule_code, True)
 
         # Replace match markers with correct value
-        result = result.replace('$NO_MATCH', 'XDP_PASS' if blacklist else 'XDP_DROP').replace(
-            '$MATCH', 'XDP_DROP' if blacklist else 'XDP_PASS')
+        result = result.replace('$NO_MATCH$', 'XDP_PASS' if blacklist else 'XDP_DROP').replace(
+            '$MATCH$', 'XDP_DROP' if blacklist else 'XDP_PASS')
 
         # Replace attack and normal traffic markers with correct values
-        result = result.replace('$ATTACK_MARKER', Program.AttackMarker).replace('$NORMAL_MARKER', Program.NormalMarker)
+        result = result.replace('$ATTACK_MARKER$', Program.AttackMarker).replace('$NORMAL_MARKER$',
+                                                                                 Program.NormalMarker)
+
+        # Replace match count
+        result = result.replace('$MATCHED$', str(len(rules) - match_all_but))
 
         # Output if requested
         if file is not None:
@@ -368,8 +377,8 @@ class Program:
         result = Program.Template
 
         # Insert include and struct code
-        result = Util.code_insert(result, '$INCLUDES', Program.__include_code(deps))
-        result = Util.code_insert(result, '$STRUCTS', Program.__struct_code(deps))
+        result = Util.code_insert(result, '$INCLUDES$', Program.__include_code(deps))
+        result = Util.code_insert(result, '$STRUCTS$', Program.__struct_code(deps))
 
         # Loop all dependencies by layer
         for osi_layer in range(min(deps.keys()), max(deps.keys()) + 1):
@@ -385,7 +394,7 @@ class Program:
                 layer_code += layer_protocols[0].load_code()
             else:
                 # Higher layer protocols should check if the packet uses this protocol
-                if_template = "if (proto%d == %s%s) {\n\t$CODE\n}\nelse "
+                if_template = "if (proto%d == %s%s) {\n\t$CODE$\n}\nelse "
 
                 # Loop all layers to create the correct condition and load code
                 for p in layer_protocols:
@@ -398,16 +407,16 @@ class Program:
 
                     # Apply clause and code
                     p_if = if_template % (p.osi, p.protocol_id, and_clause)
-                    layer_code += Util.code_insert(p_if, '$CODE', p.load_code())
+                    layer_code += Util.code_insert(p_if, '$CODE$', p.load_code())
 
                 # Finish layer with: if no protocol matched, go to rules directly
                 layer_code += "{\n\tgoto Rules;\n}"
 
             # Insert the code of the layer and go to the next
-            result = Util.code_insert(result, '$CODE', layer_code, False)
+            result = Util.code_insert(result, '$CODE$', layer_code, False)
 
         # Return the result with the $CODE marker
-        return result.replace("$CODE", "")
+        return result.replace("$CODE$", "")
 
 
 if __name__ == '__main__':

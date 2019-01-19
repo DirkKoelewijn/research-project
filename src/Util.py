@@ -1,3 +1,7 @@
+from os import listdir
+from os.path import isfile, join
+
+
 def file_str(f_name: str) -> str:
     """
     Reads a file into a string
@@ -7,6 +11,21 @@ def file_str(f_name: str) -> str:
     """
     with open(f_name, 'r') as f:
         return ''.join(f.readlines())
+
+
+def files_in_folder(folder: str, ext: str = None) -> [str]:
+    """
+    Returns the names of all all_files in a given folder
+
+    :param folder: Folder
+    :param ext: Optional. Filter on this extension (starting with .) and remove extension from file names
+    :return: List of file names
+    """
+    if ext is None:
+        return sorted([f for f in listdir(folder) if isfile(join(folder, f))])
+    else:
+        return sorted(
+            [f.replace(ext, '') for f in listdir(folder) if isfile(join(folder, f)) and f.endswith(ext)])
 
 
 def code_insert(code: str, marker: str, new_code: str, replace=True):
@@ -31,3 +50,17 @@ def code_insert(code: str, marker: str, new_code: str, replace=True):
                 code_lines = code_lines[:i] + own_code + code_lines[i:]
 
     return "\n".join(code_lines)
+
+
+def merge_csv_files(folder, header, out='combined'):
+    files = ['%s/%s.csv' % (folder, f) for f in files_in_folder(folder, '.csv')]
+    csv_lines = [','.join(header)] + [file_str(f) for f in files]
+    csv_lines = '\n'.join(csv_lines)
+    with open('%s/%s.csv' % (folder, out), 'w') as file:
+        file.writelines(csv_lines)
+
+
+if __name__ == '__main__':
+    merge_csv_files('results',
+                    ['name', 'protocol', 'src_ips', 'src_ports', 'dst_ports', 'TP', 'FP', 'UP', 'TN', 'FN', 'UN'],
+                    out='combined_all_but_one')

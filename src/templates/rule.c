@@ -1,4 +1,5 @@
 if (%s){
     // Condition: %s
-    if %s goto Match;
+    if %s
+        matched++;
 }
