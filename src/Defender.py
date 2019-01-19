@@ -7,7 +7,7 @@ from Util import files_in_folder
 
 
 class Defender(Communicator):
-    RUN_SECONDS = 10
+    RUN_SECONDS = 25
 
     def __init__(self, fingerprint, host, port, other_host, other_port, match_all_but=0):
         super().__init__('defender', host, port, other_host, other_port)
