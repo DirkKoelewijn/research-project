@@ -1,9 +1,12 @@
 import ipaddress
 from copy import deepcopy
+from math import log2
 
 from Fingerprints import Fingerprint
 from Program import Program
 from Protocols import IPv4, UDP, TCP
+
+MAX_PROP_VALUES = 100000
 
 
 class Reducer:
@@ -14,6 +17,7 @@ class Reducer:
     @staticmethod
     def auto_reduce(fingerprint, max_prop_count=Program.MaxPropCount):
         if Fingerprint.rule_size(fingerprint) <= max_prop_count:
+            print('Reducing not necessary')
             return deepcopy(fingerprint)
 
         ip = IPv4['src']
@@ -24,9 +28,17 @@ class Reducer:
         else:
             raise AssertionError("Auto reduce does not support protocol %s" % fingerprint['protocol'])
 
+        properties = [ip, src, dst]
+
+        for p in properties:
+            size = Fingerprint.prop_size(fingerprint[p])
+            if size >= MAX_PROP_VALUES:
+                raise AssertionError("Auto reduction requires all properties to have less than 100.000 values")
+
         # Reduce all properties to fall under the max prop count
         minimal_reducing = {}
-        for p in [ip, src, dst]:
+
+        for p in properties:
             minimal_reducing[p] = {}
             f, s = Reducer.auto_reduce_property(fingerprint, p, max_prop_count)
 
@@ -46,14 +58,16 @@ class Reducer:
 
             minimal_reducing[p] = tmp
 
+        print('Combining possible combinations and calculating...')
         combinations = dict([((i, s, d), (a[1] * b[1] * c[1]))
                              for i, a in minimal_reducing[ip].items()
                              for s, b in minimal_reducing[src].items()
                              for d, c in minimal_reducing[dst].items()])
 
         min_comb = min(combinations.values())
-
         optimal = [k for k, v in combinations.items() if v == min_comb][0]
+
+        print('Found optimal result: ', optimal, ', reducing fingerprint')
 
         result = Reducer.reduce_property(fingerprint, ip, optimal[0])
         result = Reducer.reduce_property(result, src, optimal[1])
@@ -91,13 +105,32 @@ class Reducer:
 
     @staticmethod
     def auto_reduce_property(fingerprint, prop, max_props):
-        res = fingerprint
-        i = 0
-        while Fingerprint.prop_size(res[prop]) > max_props:
-            i += 1
-            res = Reducer.reduce_property(fingerprint, prop, i)
+        size = Fingerprint.prop_size(fingerprint[prop])
+        if size <= max_props:
+            return fingerprint, 0
 
-        return res, i
+        if size >= MAX_PROP_VALUES:
+            raise AssertionError("Auto-reduction is only possible for properties with less than 100000 values")
+
+        low, high, current = (0, prop.size, prop.size // 2)
+
+        res = None
+        while not (low == high):
+            res = Reducer.reduce_property(fingerprint, prop, current)
+            size = Fingerprint.prop_size(res[prop])
+
+            difference = max(int(log2(max_props / size)), 1)
+
+            if size == max_props:
+                return res
+            elif size > max_props:
+                low = current + 1
+                current = min(current + difference, high)
+            else:
+                high = current
+                current = max(current - difference, low)
+
+        return res, current
 
     @staticmethod
     def reduce_property(fingerprint, prop, i):

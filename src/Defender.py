@@ -4,15 +4,16 @@ from Communication import Communicator
 from Fingerprints import Fingerprint
 from Program import Program
 from Reducing import Reducer
+from Util import files_in_folder
 
 
 class Defender(Communicator):
-    RUN_SECONDS = 25
+    RUN_SECONDS = 10
 
-    def __init__(self, fingerprint, host, port, other_host, other_port, name=None, match_all_but=0):
+    def __init__(self, fingerprint, host, port, other_host, other_port, name=None, match_all_but=0, original=None):
         super().__init__('defender', host, port, other_host, other_port)
         self.__fingerprints = fingerprint
-        self.__program = Program(fingerprint, name, match_all_but=match_all_but)
+        self.__program = Program(fingerprint, name, match_all_but=match_all_but, original=original)
         self.__result = None
 
     def start(self) -> None:
@@ -56,9 +57,9 @@ class DefenderFactory:
         self.other_port = other_port
         self.all_but = match_all_but
 
-    def launch(self, fingerprint, name=None):
+    def launch(self, fingerprint, name=None, original=None):
         d = Defender(fingerprint, self.ip, self.port, self.other_ip, self.other_port, name=name,
-                     match_all_but=self.all_but)
+                     match_all_but=self.all_but, original=original)
         d.start()
         return d
 
@@ -66,8 +67,8 @@ class DefenderFactory:
 if __name__ == '__main__':
     factory = DefenderFactory('192.168.1.145', 1025, '192.168.1.148', match_all_but=1)
     # Get all json all_files
-    # all_files = files_in_folder('fingerprints/', '.json')
-    all_files = ['0ac695f2b205e619618265f72b69ff2a']
+    all_files = files_in_folder('fingerprints/', '.json')
+    # all_files = ['07acddf0b91c79c153b199867109cb7f']
     if 'empty' in all_files:
         all_files.remove('empty')
 
@@ -75,23 +76,29 @@ if __name__ == '__main__':
 
     # Get all all_files that can be used without reducing
     files = []
+    defender = None
     for file in all_files:
         try:
+            print('Parsing and optionally reducing fingerprint %s' % file)
             fingerprint = Fingerprint.parse('fingerprints/%s.json' % file)
-
-            fingerprint = Reducer.auto_reduce(fingerprint)
-
             size = Fingerprint.rule_size(fingerprint)
+
+            reduced = Reducer.auto_reduce(fingerprint)
+
+            print('Protocol: %s' % reduced['protocol'])
+
+            size = Fingerprint.rule_size(reduced)
             if size > Program.MaxPropCount:
                 raise AssertionError('Fingerprint too big to use unreduced (size: %s)' % size)
-            #
-            defender = factory.launch(fingerprint, file)
+
+            # Launch attack
+            defender = factory.launch(reduced, file, original=fingerprint)
             defender.join()
             print(defender.result())
-
+        except AssertionError as e:
+            print('Error with fingerprint "%s":  %s' % (file, str(e)))
         except BaseException as e:
-            print('Error parsing fingerprint "%s":  %s' % (file, str(e)))
+            print('Error with fingerprint "%s":  %s' % (file, str(e)))
 
-    #
-    # if defender is not None:
-    #     defender.send_exit()
+    if defender is not None:
+        defender.send_exit()
