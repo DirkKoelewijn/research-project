@@ -10,10 +10,11 @@ class Property(ABC):
     """
     function = None
 
-    def __init__(self, proto, var: str, name=None):
+    def __init__(self, proto, var: str, name=None, size=16):
         self.proto = proto
         self.var = var
         self.__name = var if name is None else name
+        self.size = size
 
     def name(self):
         return '%s[%s]' % (self.proto.name, self.__name)
@@ -125,6 +126,9 @@ class IpProperty(Property):
     """
     Class to model a property that holds an IP address. Specify the value as "R.R.R.R" (R = 0 <= value < 256).
     """
+
+    def __init__(self, proto, var: str, name=None):
+        super().__init__(proto, var, name, 32)
 
     def compare_code(self, comparer, value: str):
         shift, value = Property.parse_shift(value)

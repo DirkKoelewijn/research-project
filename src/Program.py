@@ -20,7 +20,7 @@ class Program:
     FingerprintFolder = 'fingerprints/'
     OutputFolder = 'programs/'
     SaveFolder = 'results/'
-    MaxPropCount = 10000
+    MaxPropCount = 1000
     AttackMarker = '10'
     NormalMarker = '20'
 

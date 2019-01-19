@@ -78,10 +78,17 @@ class Fingerprint:
         """
         result = Fingerprint.parse_default(data, IPv4['src'], TCP['src'], TCP['dst'])
 
-        # Get TCP flag
         flags = data['additional']['tcp_flag']
+        flag_map = Fingerprint.__tcp_flags
 
-        result[Fingerprint.TCP_FLAG_KEY] = [v for k, v in Fingerprint.__tcp_flags.items() if k in flags]
+        for k, v in flag_map.items():
+            if k in flags:
+                result[v] = 1
+
+        # # Get TCP flag
+        # flags = data['additional']['tcp_flag']
+        #
+        # result[Fingerprint.TCP_FLAG_KEY] = [v for k, v in Fingerprint.__tcp_flags.items() if k in flags]
 
         return result
 

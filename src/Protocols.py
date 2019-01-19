@@ -45,6 +45,12 @@ class Protocol:
         self.__return = _return
         self.props = {}
 
+    def __hash__(self):
+        return hash(self.name)
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
     def __str__(self):
         return self.name
 
