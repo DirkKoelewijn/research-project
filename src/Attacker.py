@@ -30,8 +30,7 @@ class Attacker(Communicator):
         return True
 
     def download_pcap(self, name):
-        s = ddosdb.login(self.user, self.password)
-        ddosdb.download_pcap(s, name)
+        ddosdb.download_pcap(self.user, self.password, name, True)
         self.rewrite(name, 10)
 
     def run_pcap(self, name, seconds):
@@ -61,14 +60,3 @@ class Attacker(Communicator):
         """
         subprocess.call(
             ['sudo', 'pcaps/attack.sh', 'pcaps/%s.pcap' % a, 'pcaps/%s.pcap' % n, str(r), str(s)])
-
-
-if __name__ == '__main__':
-    port1 = 2000
-    # u = input('DDOSDB user:')
-    u = 'd.koelewijn@student.utwente.nl'
-    # p = input('DDOSDB pass:')
-    p = 'vRgD3WBqnA'
-    r = Attacker(u, p, '192.168.1.148', 2000, '192.168.1.145', 2000)
-    print('Listening')
-    r.run()

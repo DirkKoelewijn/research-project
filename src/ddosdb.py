@@ -1,16 +1,23 @@
 import re
+from os.path import isfile
 
 import requests
 
 
-def login(u, p):
+def download_pcap(u, p, attack_id: str, check_exists):
     """
-    Logs in to DDoSDB.org
+    Downloads a pcap file from DDoSDB.org to pcap/
 
     :param u: Username
     :param p: Password
-    :return: Session that can be used to access DDoSDB.org
+    :param attack_id: Attack identifier/key
     """
+    file = 'pcaps/%s.pcap' % attack_id
+
+    if check_exists and isfile(file):
+        print('%s already exists. Download skipped.' % file)
+        return
+
     s = requests.Session()
     login_page = s.get('https://ddosdb.org/login')
     token = re.search('name="csrfmiddlewaretoken".*?value="(.+?)"', login_page.content.decode('utf-8'))
@@ -22,17 +29,9 @@ def login(u, p):
             raise AssertionError("Username or password incorrect")
     else:
         raise AssertionError("Could not find token on page")
-    return s
 
-
-def download_pcap(s, attack_id: str):
-    """
-    Downloads a pcap file from DDoSDB.org to pcap/
-
-    :param s: Logged in session
-    :param attack_id: Attack identifier/key
-    """
     r_pcap = s.get('https://ddosdb.org/attack-trace/%s' % attack_id)
     if r_pcap.status_code == 200:
-        with open('pcaps/%s.pcap' % attack_id, 'wb') as file:
+
+        with open(file, 'wb') as file:
             file.write(r_pcap.content)
