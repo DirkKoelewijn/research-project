@@ -62,12 +62,13 @@ class Reducer:
         combinations = dict([((i, s, d), (a[1] * b[1] * c[1]))
                              for i, a in minimal_reducing[ip].items()
                              for s, b in minimal_reducing[src].items()
-                             for d, c in minimal_reducing[dst].items()])
+                             for d, c in minimal_reducing[dst].items()
+                             if (a[0] + b[0] + c[0]) < max_prop_count])
 
         min_comb = min(combinations.values())
         optimal = [k for k, v in combinations.items() if v == min_comb][0]
 
-        print('Found optimal result: ', optimal, ', reducing fingerprint')
+        print('Found optimal result: %s, reducing fingerprint...' % str(optimal))
 
         result = Reducer.reduce_property(fingerprint, ip, optimal[0])
         result = Reducer.reduce_property(result, src, optimal[1])

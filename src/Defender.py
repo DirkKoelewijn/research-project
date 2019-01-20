@@ -8,7 +8,7 @@ from Util import files_in_folder
 
 
 class Defender(Communicator):
-    RUN_SECONDS = 10
+    RUN_SECONDS = 25
 
     def __init__(self, fingerprint, host, port, other_host, other_port, name=None, match_all_but=0, original=None):
         super().__init__('defender', host, port, other_host, other_port)
@@ -67,8 +67,11 @@ class DefenderFactory:
 if __name__ == '__main__':
     factory = DefenderFactory('192.168.1.145', 1025, '192.168.1.148', match_all_but=1)
     # Get all json all_files
-    all_files = files_in_folder('fingerprints/', '.json')
-    # all_files = ['07acddf0b91c79c153b199867109cb7f']
+    all_files = set(files_in_folder('fingerprints/', '.json'))
+    all_csv_files = set(files_in_folder('results/', '.csv'))
+
+    all_files = sorted(list(all_files - all_csv_files))
+    # all_files = ['31dfe0457ff50ce9ed214c8a77e635c4']
     if 'empty' in all_files:
         all_files.remove('empty')
 
@@ -79,6 +82,7 @@ if __name__ == '__main__':
     defender = None
     for file in all_files:
         try:
+
             print('Parsing and optionally reducing fingerprint %s' % file)
             fingerprint = Fingerprint.parse('fingerprints/%s.json' % file)
             size = Fingerprint.rule_size(fingerprint)
@@ -86,10 +90,6 @@ if __name__ == '__main__':
             reduced = Reducer.auto_reduce(fingerprint)
 
             print('Protocol: %s' % reduced['protocol'])
-
-            size = Fingerprint.rule_size(reduced)
-            if size > Program.MaxPropCount:
-                raise AssertionError('Fingerprint too big to use unreduced (size: %s)' % size)
 
             # Launch attack
             defender = factory.launch(reduced, file, original=fingerprint)
