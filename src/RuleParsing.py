@@ -1,4 +1,3 @@
-from Fingerprints import Fingerprint
 from Rules import Rule
 
 
@@ -25,19 +24,19 @@ class RuleParser:
             if prop is 'protocol':
                 continue
 
-            if prop is Fingerprint.TCP_FLAG_KEY:
-                prop_rules = [p == 1 for p in values]
+            # if prop is Fingerprint.TCP_FLAG_KEY:
+            #     prop_rules = [p == 1 for p in values]
+            # else:
+            prop_rules = []
+            if isinstance(values, list):
+                for v in values:
+                    if isinstance(v, tuple):
+                        min_v, max_v = v
+                        prop_rules.append((prop >= min_v) & (prop <= max_v))
+                    else:
+                        prop_rules.append(prop == v)
             else:
-                prop_rules = []
-                if isinstance(values, list):
-                    for v in values:
-                        if isinstance(v, tuple):
-                            min_v, max_v = v
-                            prop_rules.append((prop >= min_v) & (prop <= max_v))
-                        else:
-                            prop_rules.append(prop == v)
-                else:
-                    prop_rules.append(prop == values)
+                prop_rules.append(prop == values)
 
             rules.append(Rule.one(*prop_rules))
 

@@ -20,11 +20,11 @@ class Program:
     FingerprintFolder = 'fingerprints/'
     OutputFolder = 'programs/'
     SaveFolder = 'results/'
-    MaxPropCount = 10000
+    MaxPropCount = 1000
     AttackMarker = '10'
     NormalMarker = '20'
 
-    def __init__(self, fingerprint, name=None, match_all_but=0, func=Function, dev=Device):
+    def __init__(self, fingerprint, name=None, match_all_but=0, original=None, func=Function, dev=Device):
         """
         Initializes a program
 
@@ -35,6 +35,11 @@ class Program:
         """
         self.name = name
         self.__fingerprint = fingerprint
+
+        if original is None:
+            original = fingerprint
+        self.__original = original
+
         if match_all_but <= 0:
             self.__code = Program.generate_code(RuleParser.parse(fingerprint), match_all_but=0)
         else:
@@ -53,6 +58,9 @@ class Program:
         self.__src_ips = Fingerprint.prop_size(fingerprint[IPv4['src']])
         self.__src_ports = Fingerprint.prop_size(fingerprint[p['src']])
         self.__dst_ports = Fingerprint.prop_size(fingerprint[p['dst']])
+        self.__o_src_ips = Fingerprint.prop_size(original[IPv4['src']])
+        self.__o_src_ports = Fingerprint.prop_size(original[p['src']])
+        self.__o_dst_ports = Fingerprint.prop_size(original[p['dst']])
         self.__bpf = None
         self.__func = func
         self.__dev = dev
@@ -127,6 +135,9 @@ class Program:
         return [
             self.name,
             self.__fingerprint['protocol'],
+            self.__o_src_ips,
+            self.__o_src_ports,
+            self.__o_dst_ports,
             self.__src_ips,
             self.__src_ports,
             self.__dst_ports,

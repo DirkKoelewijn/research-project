@@ -81,7 +81,7 @@ class Communicator(threading.Thread, ABC):
                     break
         except AssertionError as error:
             print('EXCEPTION:', str(error))
-            self.send(EXIT)
+            # self.send(EXIT)
             cont = False
         finally:
             connection.shutdown(2)

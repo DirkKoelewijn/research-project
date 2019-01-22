@@ -1,13 +1,145 @@
 import ipaddress
 from copy import deepcopy
+from math import log2
 
-from Protocols import IPv4
+from Fingerprints import Fingerprint
+from Program import Program
+from Protocols import IPv4, UDP, TCP
+
+MAX_PROP_VALUES = 100000
 
 
 class Reducer:
     """
     Class to reduce fingerprints
     """
+
+    @staticmethod
+    def auto_reduce(fingerprint, max_prop_count=Program.MaxPropCount):
+        if Fingerprint.rule_size(fingerprint) <= max_prop_count:
+            print('Reducing not necessary')
+            return deepcopy(fingerprint)
+
+        ip = IPv4['src']
+        if fingerprint['protocol'] == 'UDP':
+            src, dst = (UDP['src'], UDP['dst'])
+        elif fingerprint['protocol'] == 'TCP':
+            src, dst = (TCP['src'], TCP['dst'])
+        else:
+            raise AssertionError("Auto reduce does not support protocol %s" % fingerprint['protocol'])
+
+        properties = [ip, src, dst]
+
+        for p in properties:
+            size = Fingerprint.prop_size(fingerprint[p])
+            if size >= MAX_PROP_VALUES:
+                raise AssertionError("Auto reduction requires all properties to have less than 100.000 values")
+
+        # Reduce all properties to fall under the max prop count
+        minimal_reducing = {}
+
+        for p in properties:
+            minimal_reducing[p] = {}
+            f, s = Reducer.auto_reduce_property(fingerprint, p, max_prop_count)
+
+            for i in range(s, p.size):
+                f = Reducer.reduce_property(fingerprint, p, i)
+                c = Fingerprint.prop_size(f[p])
+                minimal_reducing[p][i] = (c, Reducer.possible_combinations(f, p))
+
+                # Stop if only one property is left
+                if c == 1:
+                    break
+
+            tmp = {}
+            for s, t in minimal_reducing[p].items():
+                if t not in tmp.values():
+                    tmp[s] = t
+
+            minimal_reducing[p] = tmp
+
+        print('Combining possible combinations and calculating...')
+        combinations = dict([((i, s, d), (a[1] * b[1] * c[1]))
+                             for i, a in minimal_reducing[ip].items()
+                             for s, b in minimal_reducing[src].items()
+                             for d, c in minimal_reducing[dst].items()
+                             if (a[0] + b[0] + c[0]) < max_prop_count])
+
+        min_comb = min(combinations.values())
+        optimal = [k for k, v in combinations.items() if v == min_comb][0]
+
+        print('Found optimal result: %s, reducing fingerprint...' % str(optimal))
+
+        result = Reducer.reduce_property(fingerprint, ip, optimal[0])
+        result = Reducer.reduce_property(result, src, optimal[1])
+        result = Reducer.reduce_property(result, dst, optimal[2])
+
+        return result
+
+    @staticmethod
+    def possible_ip_port_combinations(fingerprint):
+        ip_count = Reducer.possible_combinations(fingerprint, IPv4['src'])
+
+        if UDP['src'] in fingerprint:
+            src_port = UDP['src']
+            dst_port = UDP['dst']
+        else:
+            src_port = TCP['src']
+            dst_port = TCP['dst']
+
+        src_port_count = Reducer.possible_combinations(fingerprint, src_port)
+        dst_port_count = Reducer.possible_combinations(fingerprint, dst_port)
+
+        return ip_count * src_port_count * dst_port_count
+
+    @staticmethod
+    def possible_combinations(fingerprint, prop):
+        values = fingerprint[prop]
+        total = 0
+        for value in values:
+            if '/' in str(value):
+                post_slash = int(value.split('/')[1])
+                total += 2 ** (prop.size - post_slash)
+            else:
+                total += 1
+        return total
+
+    @staticmethod
+    def auto_reduce_property(fingerprint, prop, max_props):
+        size = Fingerprint.prop_size(fingerprint[prop])
+        if size <= max_props:
+            return fingerprint, 0
+
+        if size >= MAX_PROP_VALUES:
+            raise AssertionError("Auto-reduction is only possible for properties with less than 100000 values")
+
+        low, high, current = (0, prop.size, prop.size // 2)
+
+        res = None
+        while not (low == high):
+            res = Reducer.reduce_property(fingerprint, prop, current)
+            size = Fingerprint.prop_size(res[prop])
+
+            difference = max(int(log2(max_props / size)), 1)
+
+            if size == max_props:
+                return res
+            elif size > max_props:
+                low = current + 1
+                current = min(current + difference, high)
+            else:
+                high = current
+                current = max(current - difference, low)
+
+        return res, current
+
+    @staticmethod
+    def reduce_property(fingerprint, prop, i):
+        conv_func, conv_back = (None, None)
+        if prop is IPv4['src']:
+            conv_func, conv_back = (Reducer.__ip_to_int, Reducer.__ip_to_str)
+
+        return Reducer.shift_aggregate(fingerprint, prop, i, conv_func, conv_back)
 
     @staticmethod
     def distance_aggregate(fingerprint, prop, dist, conv_func=None):
@@ -85,7 +217,7 @@ class Reducer:
         return str(ipaddress.IPv4Address(ip))
 
     @staticmethod
-    def shift_aggregate(fingerprint, prop, shift, conv_func=None, conv_back=None, size=16):
+    def shift_aggregate(fingerprint, prop, shift, conv_func=None, conv_back=None):
         """
         Makes a fingerprint only use the first (size-shift) bits of a property for comparison and removes duplicates
         The original fingerprint stays untouched, as this function uses deepcopy before applying any modifications.
@@ -95,7 +227,6 @@ class Reducer:
         :param shift: Number of bits to 'throw away'
         :param conv_func: Optional. Function to convert value to a numeric value
         :param conv_back: Optional. Function to convert a numeric value back
-        :param size: Size of the variable in bits
         :return: New fingerprint instance with modifications
         """
         result = deepcopy(fingerprint)
@@ -107,12 +238,23 @@ class Reducer:
         elif conv_func is not None or conv_back is not None:
             raise AssertionError("Both conv_func as conv_back should be specified")
 
-        values = list(set(sorted([v >> shift << shift for v in values])))
+        values = sorted(list(set([(v >> shift, shift) for v in values])))
+
+        # Merge if possible
+        res = []
+        for v, s in values:
+            # Add component to list
+            res.append((v, s))
+
+            while len(res) >= 2 and (res[-1][1] == res[-2][1]) and (res[-1][0] >> 1 == res[-2][0] >> 1):
+                res = res[:-2] + [(res[-1][0] >> 1, res[-1][1] + 1)]
+
+        values = res
 
         if conv_back is not None:
-            values = [conv_back(v) for v in values]
+            values = [(conv_back(v << s), s) for v, s in values]
 
-        values = ['%s/%s' % (v, size - shift) for v in values]
+        values = ['%s/%s' % (v, prop.size - s) for v, s in values]
 
         result[prop] = values
         return result
@@ -127,8 +269,7 @@ class Reducer:
         :param shift: Number of bits to 'throw away'
         :return: New fingerprint instance with modifications
         """
-        return Reducer.shift_aggregate(fingerprint, IPv4['src'], shift, Reducer.__ip_to_int, Reducer.__ip_to_str,
-                                       size=32)
+        return Reducer.shift_aggregate(fingerprint, IPv4['src'], shift, Reducer.__ip_to_int, Reducer.__ip_to_str)
 
     @staticmethod
     def binary_aggregate(fingerprint, prop, shift, conv_func=None, conv_back=None, size=16):
