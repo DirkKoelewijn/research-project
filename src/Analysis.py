@@ -2,6 +2,10 @@ import csv
 
 import matplotlib.pyplot as plt
 
+from Util import file_str
+
+FaultyUnits = file_str('faulty_fingerprints.txt').split('\n')
+
 
 class Data:
     def __init__(self, csv_file):
@@ -47,6 +51,8 @@ class Data:
             for row in self:
                 if t[2](row):
                     t_x.append(t[0](row))
+                    if t[1](row) <= 0.3:
+                        print()
                     t_y.append(t[1](row))
 
             plt.scatter(t_x, t_y, label=t[3], marker=marker)
@@ -180,7 +186,7 @@ def is_tcp(data):
 
 
 def check(data):
-    return int(data['TP']) + int(data['TN']) + int(data['FP']) + int(data['FN']) > 0
+    return data['name'] not in FaultyUnits and int(data['TP']) + int(data['TN']) + int(data['FP']) + int(data['FN']) > 0
 
 
 def scatter(data, props, prop_label, value, value_label, save=None):
@@ -237,4 +243,4 @@ def csv_graphs(data, name):
 
 if __name__ == '__main__':
     d = Data('results/combined/combined_reduced_all_but_one.csv')
-    csv_graphs(d, 'all_but_one')
+    scatter(d, true_positive_rate, 'True positive', true_negative_rate, 'True negative')

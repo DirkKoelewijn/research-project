@@ -167,3 +167,4 @@ venv.bak/
 !/src/pcaps/attack.sh
 /src/results/
 !/src/results/combined/
+!/list.txt
