@@ -1,4 +1,4 @@
-from time import sleep
+from time import sleep, time
 
 import Analysis
 from Communication import Communicator
@@ -15,7 +15,6 @@ class Defender(Communicator):
         super().__init__('defender', host, port, other_host, other_port)
         self.__fingerprints = fingerprint
         self.__program = Program(fingerprint, name, match_all_but=match_all_but, original=original)
-        print(self.__program)
         self.__result = None
 
     def start(self) -> None:
@@ -82,23 +81,30 @@ if __name__ == '__main__':
     # Get all all_files that can be used without reducing
     files = []
     defender = None
+    start = 0
     for file in all_files:
         try:
-
             print('Parsing and optionally reducing fingerprint %s' % file)
             fingerprint = Fingerprint.parse('fingerprints/%s.json' % file)
             size = Fingerprint.rule_size(fingerprint)
-
             reduced = Reducer.auto_reduce(fingerprint)
-
             print('Protocol: %s' % reduced['protocol'])
+        except BaseException as e:
+            print('Error with fingerprint "%s":  %s' % (file, str(e)))
+            continue
 
+        try:
+            t_dif = time() - start
+            if t_dif < 35:
+                wait = 35 - t_dif
+                print('Waiting %s seconds for before starting next program' % wait)
+                sleep(wait)
+
+            start = time()
             # Launch attack
             defender = factory.launch(reduced, file, original=fingerprint)
             defender.join()
             print(defender.result())
-        except AssertionError as e:
-            print('Error with fingerprint "%s":  %s' % (file, str(e)))
         except BaseException as e:
             print('Error with fingerprint "%s":  %s' % (file, str(e)))
 
