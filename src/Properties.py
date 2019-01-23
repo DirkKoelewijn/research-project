@@ -57,7 +57,7 @@ class Property(ABC):
         return Condition(self, '>', other)
 
     @staticmethod
-    def parse_shift(value):
+    def parse_shift(value, size):
         """
         Retrieves the shift for a given value
 
@@ -67,7 +67,7 @@ class Property(ABC):
         shift = -1
         if '/' in value:
             i = value.index('/')
-            shift = 32 - int(value[i + 1:])
+            shift = size - int(value[i + 1:])
             value = value[:i]
 
         return shift, value
@@ -102,7 +102,7 @@ class HtonsProperty(Property):
     """
 
     def compare_code(self, comparer, value: str):
-        shift, value = Property.parse_shift(value)
+        shift, value = Property.parse_shift(value, self.size)
 
         if shift == -1:
             return "htons(%s) %s %s" % (self, comparer, value)
@@ -131,7 +131,7 @@ class IpProperty(Property):
         super().__init__(proto, var, name, 32)
 
     def compare_code(self, comparer, value: str):
-        shift, value = Property.parse_shift(value)
+        shift, value = Property.parse_shift(value, self.size)
 
         val = 0
         for v in value.split('.'):

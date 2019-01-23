@@ -1,5 +1,6 @@
 from time import sleep
 
+import Analysis
 from Communication import Communicator
 from Fingerprints import Fingerprint
 from Program import Program
@@ -14,6 +15,7 @@ class Defender(Communicator):
         super().__init__('defender', host, port, other_host, other_port)
         self.__fingerprints = fingerprint
         self.__program = Program(fingerprint, name, match_all_but=match_all_but, original=original)
+        print(self.__program)
         self.__result = None
 
     def start(self) -> None:
@@ -69,9 +71,9 @@ if __name__ == '__main__':
     # Get all json all_files
     all_files = set(files_in_folder('fingerprints/', '.json'))
     all_csv_files = set(files_in_folder('results/', '.csv'))
-
-    all_files = sorted(list(all_files - all_csv_files))
-    # all_files = ['31dfe0457ff50ce9ed214c8a77e635c4']
+    faulty_files = set(Analysis.FaultyUnits)
+    all_files = sorted(list(all_files - all_csv_files - faulty_files))
+    # all_files = ['915c470676ed79290c9f021114647421']
     if 'empty' in all_files:
         all_files.remove('empty')
 
@@ -100,5 +102,5 @@ if __name__ == '__main__':
         except BaseException as e:
             print('Error with fingerprint "%s":  %s' % (file, str(e)))
 
-    if defender is not None:
-        defender.send_exit()
+    # if defender is not None:
+    #     defender.send_exit()

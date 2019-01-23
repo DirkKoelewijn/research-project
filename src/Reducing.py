@@ -74,6 +74,10 @@ class Reducer:
         result = Reducer.reduce_property(result, src, optimal[1])
         result = Reducer.reduce_property(result, dst, optimal[2])
 
+        # for p in [ip, src, dst]:
+        #     if result[p][0].endswith('/0'):
+        #         del result[p]
+
         return result
 
     @staticmethod
@@ -254,7 +258,7 @@ class Reducer:
         if conv_back is not None:
             values = [(conv_back(v << s), s) for v, s in values]
 
-        values = ['%s/%s' % (v, prop.size - s) for v, s in values]
+        values = ['%s/%s' % (v, prop.size - s) if s != 0 else '%s' % v for v, s in values]
 
         result[prop] = values
         return result

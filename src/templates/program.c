@@ -29,6 +29,7 @@ int xdp_filter(struct xdp_md *ctx) {
 
      // Match
     if (ip != NULL && matched >= $MATCHED$){
+        Matched:
         if (ip->ttl == $ATTACK_MARKER$) bpf_trace_printk("$TP$\n");
         else if (ip->ttl == $NORMAL_MARKER$) bpf_trace_printk("$FP$\n");
         else bpf_trace_printk("$UP$\n");
