@@ -10,9 +10,10 @@ class Protocol:
     """
 
     Template = Util.file_str('templates/protocol.c')
+    TCPTemplate = Util.file_str('templates/protocol_tcp.c')
 
     def __init__(self, name: str, osi: int, includes: [str], struct_type: str, struct_name: str,
-                 lower_protocols: ['Protocol'] = None, p_id=None, next_p='-1', size=None, _return=False):
+                 lower_protocols: ['Protocol'] = None, p_id=None, next_p='-1', size=None, _return=False, template=None):
         """
         Initializes a protocol
 
@@ -45,6 +46,10 @@ class Protocol:
         self.__return = _return
         self.props = {}
 
+        if template is None:
+            template = Protocol.Template
+        self.template = template
+
     def __hash__(self):
         return hash(self.name)
 
@@ -68,7 +73,7 @@ class Protocol:
         Generates the code to load the data into the struct of the protocol
         :return: Code to load data into protocol struct
         """
-        result = Protocol.Template \
+        result = self.template \
             .replace("$NAME", self.name) \
             .replace("$STRUCT_NAME", self.struct_name)
 
@@ -131,7 +136,7 @@ ICMPv6 = Protocol('ICMPv6', 4, ['linux/icmpv6.h'], 'icmp6hdr', 'icmp6', [IPv6], 
 IGMP = Protocol('IGMP', 4, ['linux/igmp.h'], 'igmphdr', 'igmp', [IPv4, IPv6], '2')
 
 # TCP
-TCP = Protocol('TCP', 4, ['linux/tcp.h'], 'tcphdr', 'tcp', [IPv4, IPv6], '6')
+TCP = Protocol('TCP', 4, ['linux/tcp.h'], 'tcphdr', 'tcp', [IPv4, IPv6], '6', template=Protocol.TCPTemplate)
 
 TCP['src'] = Properties.HtonsProperty(TCP, 'source', 'src')
 TCP['dst'] = Properties.HtonsProperty(TCP, 'dest', 'dst')

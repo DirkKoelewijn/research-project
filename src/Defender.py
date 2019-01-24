@@ -1,5 +1,6 @@
-from time import sleep
+from time import sleep, time
 
+import Analysis
 from Communication import Communicator
 from Fingerprints import Fingerprint
 from Program import Program
@@ -65,13 +66,13 @@ class DefenderFactory:
 
 
 if __name__ == '__main__':
-    factory = DefenderFactory('192.168.1.145', 1025, '192.168.1.148', match_all_but=1)
+    factory = DefenderFactory('192.168.1.145', 1025, '192.168.1.148', match_all_but=2)
     # Get all json all_files
     all_files = set(files_in_folder('fingerprints/', '.json'))
     all_csv_files = set(files_in_folder('results/', '.csv'))
-
-    all_files = sorted(list(all_files - all_csv_files))
-    # all_files = ['31dfe0457ff50ce9ed214c8a77e635c4']
+    faulty_files = set(Analysis.FaultyUnits)
+    all_files = sorted(list(all_files - all_csv_files - faulty_files))
+    # all_files = ['915c470676ed79290c9f021114647421']
     if 'empty' in all_files:
         all_files.remove('empty')
 
@@ -80,25 +81,32 @@ if __name__ == '__main__':
     # Get all all_files that can be used without reducing
     files = []
     defender = None
+    start = 0
     for file in all_files:
         try:
-
             print('Parsing and optionally reducing fingerprint %s' % file)
             fingerprint = Fingerprint.parse('fingerprints/%s.json' % file)
             size = Fingerprint.rule_size(fingerprint)
-
             reduced = Reducer.auto_reduce(fingerprint)
-
             print('Protocol: %s' % reduced['protocol'])
+        except BaseException as e:
+            print('Error with fingerprint "%s":  %s' % (file, str(e)))
+            continue
 
+        try:
+            t_dif = time() - start
+            if t_dif < 35:
+                wait = 35 - t_dif
+                print('Waiting %s seconds for before starting next program' % wait)
+                sleep(wait)
+
+            start = time()
             # Launch attack
             defender = factory.launch(reduced, file, original=fingerprint)
             defender.join()
             print(defender.result())
-        except AssertionError as e:
-            print('Error with fingerprint "%s":  %s' % (file, str(e)))
         except BaseException as e:
             print('Error with fingerprint "%s":  %s' % (file, str(e)))
 
-    if defender is not None:
-        defender.send_exit()
+    # if defender is not None:
+    #     defender.send_exit()

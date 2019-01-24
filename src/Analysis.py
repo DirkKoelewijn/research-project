@@ -242,5 +242,5 @@ def csv_graphs(data, name):
 
 
 if __name__ == '__main__':
-    d = Data('results/combined/combined_reduced_all_but_one.csv')
-    scatter(d, true_positive_rate, 'True positive', true_negative_rate, 'True negative')
+    d = Data('results/combined/not_strict.csv')
+    csv_graphs(d, 'not_strict')
