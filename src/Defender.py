@@ -66,7 +66,7 @@ class DefenderFactory:
 
 
 if __name__ == '__main__':
-    factory = DefenderFactory('192.168.1.145', 1025, '192.168.1.148', match_all_but=1)
+    factory = DefenderFactory('192.168.1.145', 1025, '192.168.1.148', match_all_but=2)
     # Get all json all_files
     all_files = set(files_in_folder('fingerprints/', '.json'))
     all_csv_files = set(files_in_folder('results/', '.csv'))

@@ -63,4 +63,4 @@ def merge_csv_files(folder, header, out='combined'):
 if __name__ == '__main__':
     merge_csv_files('results',
                     ['name', 'protocol', 'src_ips', 'src_ports', 'dst_ports', 'TP', 'FP', 'UP', 'TN', 'FN', 'UN'],
-                    out='combined/less_strict')
+                    out='combined/not_strict')
